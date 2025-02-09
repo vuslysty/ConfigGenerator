@@ -96,7 +96,7 @@ static async Task LoadGoogleCredentials()
     foreach (var valueRange in response.ValueRanges)
     {
         var tableName = valueRange.Range.Split('!')[0];
-        var possibleTables = TableDataAnalyzer.ExtractData(tableName, valueRange.Values);
+        var tables = TableDataAnalyzer.ExtractData(tableName, valueRange.Values);
 
         Console.WriteLine($"Дані з листа '{valueRange.Range}':");
         foreach (var row in valueRange.Values)

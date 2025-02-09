@@ -1,4 +1,4 @@
-using System.Collections;
+using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
@@ -6,24 +6,32 @@ namespace ConfigGenerator
 {
     public class TableData
     {
-
+        public string Name;
+        public int StartRow;
+        public int StartCol;
     }
-
-    public struct PossibleTable
+    
+    public class ValueTableData : TableData
     {
-        public string name;
-        public int row;
-        public int col;
+        public List<(int row, string id, string type, string value, string comment)> Data = new();
+    }
+    
+    public class DatabaseTableData : TableData
+    {
+        public string IdType;
+        public List<(string name, string type, string comment, int col)> DataTypes = new();
+        public List<List<string>> DataValues = new();
     }
 
     public class TableDataAnalyzer
     {
-        static string _tableStartPattern = @"^#([A-Za-z][A-Za-z0-9_ ]*)$";
+        private const string TableStartPattern = @"^#([A-Za-z][A-Za-z0-9_ ]*)$";
 
-        private static List<PossibleTable> GetPossibleTables(string pageName, IList<IList<object>> pageData)
+        private static List<(string name, int row, int col)> GetPossibleTables(
+            string pageName,
+            IList<IList<object>> pageData)
         {
-            List<PossibleTable> possibleTables = new List<PossibleTable>();
-            int rowCount = pageData.Count;
+            List<(string name, int row, int col)> possibleTables = new();
 
             for (int row = 0; row < pageData.Count; row++)
             {
@@ -33,29 +41,43 @@ namespace ConfigGenerator
                 {
                     string cellData = (string)pageData[row][col];
 
-                    if (row == 0 && col == 0 && cellData == "id")
+                    if (row == 0 && col == 0 && (cellData == "id" || cellData == string.Empty))
                     {
-                        possibleTables.Add(new PossibleTable()
+                        if (cellData == "id")
                         {
-                            name = pageName, row = row, col = col
-                        });
+                            possibleTables.Add((pageName, row, col));
+                        }
+                        else
+                        {
+                            if (TryGetCellData(pageData, row + 1, col, out string nextCellData))
+                            {
+                                if (nextCellData == "id")
+                                {
+                                    possibleTables.Add((pageName, row + 1, col));
+                                }
+                            }
+                        }
                     }
-                    else if (cellData.StartsWith('#') && Regex.IsMatch(cellData, _tableStartPattern))
+                    else if (cellData.StartsWith('#') && Regex.IsMatch(cellData, TableStartPattern))
                     {
                         string tableName = cellData.Substring(1).Trim();
-                        int nextRowId = row + 1;
-
+                        
                         // Data in the cell below the table name exists
-                        if (nextRowId < rowCount && col < pageData[nextRowId].Count)
+                        if (TryGetCellData(pageData, row + 1, col, out string nextCellData))
                         {
-                            string nextCellData = (string)pageData[nextRowId][col];
-
                             if (nextCellData == "id")
                             {
-                                possibleTables.Add(new PossibleTable()
+                                possibleTables.Add((tableName, row + 1, col));
+                            }
+                            else if (nextCellData == "")
+                            {
+                                if (TryGetCellData(pageData, row + 2, col, out nextCellData))
                                 {
-                                    name = tableName, row = nextRowId, col = col
-                                });
+                                    if (nextCellData == "id")
+                                    {
+                                        possibleTables.Add((tableName, row + 2, col));
+                                    }
+                                }
                             }
                         }
                     }
@@ -65,10 +87,195 @@ namespace ConfigGenerator
             return possibleTables;
         }
 
-        public static List<PossibleTable> ExtractData(string pageName, IList<IList<object>> pageData)
+        private static bool TryGetCellData(IList<IList<object>> pageData, int row, int col, out string cellData)
+        {
+            cellData = null;
+
+            try
+            {
+                cellData = (string)pageData[row][col];
+            }
+            catch
+            {
+                return false;
+            }
+            
+            return true;
+        }
+
+        private static string GetCellData(IList<IList<object>> pageData, int row, int col)
+        {
+            if (TryGetCellData(pageData, row, col, out string cellData))
+            {
+                return cellData;
+            }
+            
+            return null;
+        }
+
+        public static List<TableData> ExtractData(string pageName, IList<IList<object>> pageData)
         {
             var possibleTables = GetPossibleTables(pageName, pageData);
-            return possibleTables;
+
+            List<TableData> tableDataList = new();
+            
+            foreach (var possibleTable in possibleTables)
+            {
+                int startRow = possibleTable.row;
+                int startCol = possibleTable.col;
+
+                if (GetCellData(pageData, startRow, startCol + 1) == "type" &&
+                    GetCellData(pageData, startRow, startCol + 2) == "value")
+                {
+                    ValueTableData valueTableData = new ValueTableData()
+                    {
+                        Name = possibleTable.name,
+                        StartRow = possibleTable.row,
+                        StartCol = possibleTable.col,
+                    };
+
+                    int idCol = startCol;
+                    int typeCol = startCol + 1;
+                    int valueCol = startCol + 2;
+                    int commentCol = startCol + 3;
+                    
+                    int checkDataRow = startRow + 1;
+
+                    while (true)
+                    {
+                        string id = GetCellData(pageData, checkDataRow, idCol);
+
+                        if (string.IsNullOrWhiteSpace(id))
+                        {
+                            break;
+                        }
+
+                        if (id.StartsWith('!'))
+                        {
+                            checkDataRow++;
+                            continue;
+                        }
+                        
+                        string type = GetCellData(pageData, checkDataRow, typeCol);
+                        
+                        if (string.IsNullOrWhiteSpace(type))
+                        {
+                            type = "string";
+                        }
+                        
+                        string value = GetCellData(pageData, checkDataRow, valueCol);
+                        
+                        if (string.IsNullOrWhiteSpace(value))
+                        {
+                            value = String.Empty;
+                        }
+                        
+                        string comment = GetCellData(pageData, checkDataRow, commentCol);
+                        
+                        if (string.IsNullOrWhiteSpace(comment))
+                        {
+                            comment = String.Empty;
+                        }
+                        
+                        valueTableData.Data.Add((checkDataRow, id, type, value, comment));
+                        checkDataRow++;
+                    }
+                    
+                    tableDataList.Add(valueTableData);
+                }
+                else
+                {
+                    DatabaseTableData databaseTableData = new DatabaseTableData
+                    {
+                        Name = possibleTable.name,
+                        StartRow = possibleTable.row,
+                        StartCol = possibleTable.col,
+                    };
+
+                    int checkCol = startCol + 1;
+                    while (TryGetCellData(pageData, startRow, checkCol, out string cellData) && cellData != "")
+                    {
+                        // We skip column if its name starts with sign '!'
+                        if (cellData.StartsWith('!'))
+                        {
+                            checkCol++;
+                            continue;
+                        }
+
+                        if (!TryGetCellData(pageData, startRow + 1, checkCol, out string type))
+                        {
+                            // When type is empty we decide that type is equal "string"
+                            type = "string";
+                        }
+
+                        if (!TryGetCellData(pageData, startRow + -1, checkCol, out string comment))
+                        {
+                            comment = string.Empty;
+                        }
+                        
+                        databaseTableData.DataTypes.Add((cellData, type, comment, checkCol));
+                        
+                        checkCol++;
+                    }
+
+                    if (!TryGetCellData(pageData, startRow + 1, startCol, out string idType))
+                    {
+                        idType = "int";
+                    }
+                    
+                    databaseTableData.IdType = idType;
+
+                    int checkDataRow = startRow + 2;
+
+                    while (true)
+                    {
+                        List<string> data = new();
+                        int notEmptyDataCounter = 0;
+
+                        string id = GetCellData(pageData, checkDataRow, startCol);
+
+                        if (string.IsNullOrWhiteSpace(id))
+                        {
+                            id = string.Empty;
+                        }
+                        else
+                        {
+                            notEmptyDataCounter++;
+                        }
+                        
+                        data.Add(id);
+                        
+                        foreach (var dataType in databaseTableData.DataTypes)
+                        {
+                            if (!TryGetCellData(pageData, checkDataRow, dataType.col, out string dataContent))
+                            {
+                                dataContent = string.Empty;
+                            }
+
+                            if (dataContent != string.Empty)
+                            {
+                                notEmptyDataCounter++;
+                            }
+                            
+                            data.Add(dataContent);
+                        }
+
+                        if (notEmptyDataCounter > 0)
+                        {
+                            checkDataRow++;
+                            databaseTableData.DataValues.Add(data);
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    
+                    tableDataList.Add(databaseTableData);
+                }
+            }
+
+            return tableDataList;
         }
     }
 }
