@@ -96,12 +96,12 @@ static async Task LoadGoogleCredentials()
     foreach (var valueRange in response.ValueRanges)
     {
         var tableName = valueRange.Range.Split('!')[0];
-        var tables = TableDataAnalyzer.ExtractData(tableName, valueRange.Values);
+        var tables = TableDataAnalyzer.ExtractTablesFromPage(tableName, valueRange.Values);
 
-        Console.WriteLine($"Дані з листа '{valueRange.Range}':");
-        foreach (var row in valueRange.Values)
-        {
-            Console.WriteLine(string.Join(", ", row));
-        }
+        // Console.WriteLine($"Дані з листа '{valueRange.Range}':");
+        // foreach (var row in valueRange.Values)
+        // {
+        //     Console.WriteLine(string.Join(", ", row));
+        // }
     }
 }

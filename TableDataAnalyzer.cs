@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Numerics;
 using System.Text.RegularExpressions;
 
 namespace ConfigGenerator
@@ -7,8 +9,12 @@ namespace ConfigGenerator
     public class TableData
     {
         public string Name;
+        
         public int StartRow;
         public int StartCol;
+        
+        public int EndRow;
+        public int EndCol;
     }
     
     public class ValueTableData : TableData
@@ -113,7 +119,7 @@ namespace ConfigGenerator
             return null;
         }
 
-        public static List<TableData> ExtractData(string pageName, IList<IList<object>> pageData)
+        public static List<TableData> ExtractTablesFromPage(string pageName, IList<IList<object>> pageData)
         {
             var possibleTables = GetPossibleTables(pageName, pageData);
 
@@ -180,6 +186,12 @@ namespace ConfigGenerator
                         valueTableData.Data.Add((checkDataRow, id, type, value, comment));
                         checkDataRow++;
                     }
+                    
+                    valueTableData.EndCol = valueTableData.StartCol + 2;
+                    
+                    valueTableData.EndRow = valueTableData.Data.Count > 0
+                        ? valueTableData.Data[^1].row
+                        : valueTableData.StartRow;
                     
                     tableDataList.Add(valueTableData);
                 }
@@ -270,12 +282,49 @@ namespace ConfigGenerator
                             break;
                         }
                     }
+
+                    databaseTableData.EndCol = databaseTableData.DataTypes.Count > 0
+                        ? databaseTableData.DataTypes[^1].col
+                        : databaseTableData.StartCol;
+                    
+                    databaseTableData.EndRow = databaseTableData.DataValues.Count > 0
+                        ? databaseTableData.StartRow + databaseTableData.DataValues.Count + 1
+                        : databaseTableData.StartRow + 1;
                     
                     tableDataList.Add(databaseTableData);
                 }
             }
 
+            foreach (var table1 in tableDataList)
+            {
+                foreach (var table2 in tableDataList)
+                {
+                    if (table1 == table2)
+                    {
+                        continue;
+                    }
+                    
+                    if (AreTablesOverlap(table1, table2))
+                    {
+                        Console.WriteLine($"Tables \"{table1.Name}\" and {table2.Name} overlap.");
+                    }
+                }
+            }
+
             return tableDataList;
+        }
+
+        private static bool AreTablesOverlap(TableData table1, TableData table2)
+        {
+            Rect table1RectWithSafeZone = new Rect(
+                new Vector2(table1.StartCol - 1, table1.StartRow - 1), 
+                new Vector2(table1.EndCol + 1, table1.EndRow + 1));
+            
+            Rect table2Rect = new Rect(
+                new Vector2(table2.StartCol, table2.StartRow), 
+                new Vector2(table2.EndCol, table2.EndRow));
+
+            return table1RectWithSafeZone.Overlaps(table2Rect);
         }
     }
 }
