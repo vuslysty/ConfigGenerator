@@ -13,7 +13,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <None Update="test-project-416421-162125dc3989.json">
+      <None Update="credentials.json">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </None>
     </ItemGroup>

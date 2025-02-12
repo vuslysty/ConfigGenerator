@@ -59,7 +59,7 @@ static async Task LoadGoogleCredentials()
     string[] Scopes = { SheetsService.Scope.SpreadsheetsReadonly };
     string ApplicationName = "Google Sheets API Example";
     string spreadsheetId = "1JphtDv8GUoyqib2y1r_FkiF6JdlrCRg_GIxpWv7v-aQ";
-    string credentialsFile = "test-project-416421-162125dc3989.json";
+    string credentialsFile = "credentials.json";
 
     // Завантажуємо облікові дані
     GoogleCredential credential;
