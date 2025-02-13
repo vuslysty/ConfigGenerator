@@ -119,11 +119,177 @@ namespace ConfigGenerator
             return null;
         }
 
-        public static List<TableData> ExtractTablesFromPage(string pageName, IList<IList<object>> pageData)
+        private static TableData GetValueTableData(int startRow, int startCol, string name,
+            IList<IList<object>> pageData)
         {
-            var possibleTables = GetPossibleTables(pageName, pageData);
+            ValueTableData valueTableData = new ValueTableData()
+            {
+                Name = name,
+                StartRow = startRow,
+                StartCol = startCol,
+            };
 
-            List<TableData> tableDataList = new();
+            int idCol = startCol;
+            int typeCol = startCol + 1;
+            int valueCol = startCol + 2;
+            int commentCol = startCol + 3;
+
+            int checkDataRow = startRow + 1;
+
+            while (true)
+            {
+                string id = GetCellData(pageData, checkDataRow, idCol);
+
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    break;
+                }
+
+                if (id.StartsWith('!'))
+                {
+                    checkDataRow++;
+                    continue;
+                }
+
+                string type = GetCellData(pageData, checkDataRow, typeCol);
+
+                if (string.IsNullOrWhiteSpace(type))
+                {
+                    type = "string";
+                }
+
+                string value = GetCellData(pageData, checkDataRow, valueCol);
+
+                if (string.IsNullOrWhiteSpace(value))
+                {
+                    value = String.Empty;
+                }
+
+                string comment = GetCellData(pageData, checkDataRow, commentCol);
+
+                if (string.IsNullOrWhiteSpace(comment))
+                {
+                    comment = String.Empty;
+                }
+
+                valueTableData.Data.Add((checkDataRow, id, type, value, comment));
+                checkDataRow++;
+            }
+
+            valueTableData.EndCol = valueTableData.StartCol + 2;
+
+            valueTableData.EndRow = valueTableData.Data.Count > 0
+                ? valueTableData.Data[^1].row
+                : valueTableData.StartRow;
+
+            return valueTableData;
+        }
+
+        private static TableData GetDatabaseTableData(int startRow, int startCol, string name,
+            IList<IList<object>> pageData)
+        {
+            DatabaseTableData databaseTableData = new DatabaseTableData
+            {
+                Name = name,
+                StartRow = startRow,
+                StartCol = startCol,
+            };
+
+            int checkCol = startCol + 1;
+            while (TryGetCellData(pageData, startRow, checkCol, out string cellData) && cellData != "")
+            {
+                // We skip column if its name starts with sign '!'
+                if (cellData.StartsWith('!'))
+                {
+                    checkCol++;
+                    continue;
+                }
+
+                if (!TryGetCellData(pageData, startRow + 1, checkCol, out string type))
+                {
+                    // When type is empty we decide that type is equal "string"
+                    type = "string";
+                }
+
+                if (!TryGetCellData(pageData, startRow + -1, checkCol, out string comment))
+                {
+                    comment = string.Empty;
+                }
+
+                databaseTableData.DataTypes.Add((cellData, type, comment, checkCol));
+
+                checkCol++;
+            }
+
+            if (!TryGetCellData(pageData, startRow + 1, startCol, out string idType))
+            {
+                idType = "int";
+            }
+
+            databaseTableData.IdType = idType;
+
+            int checkDataRow = startRow + 2;
+
+            while (true)
+            {
+                List<string> data = new();
+                int notEmptyDataCounter = 0;
+
+                string id = GetCellData(pageData, checkDataRow, startCol);
+
+                if (string.IsNullOrWhiteSpace(id))
+                {
+                    id = string.Empty;
+                }
+                else
+                {
+                    notEmptyDataCounter++;
+                }
+
+                data.Add(id);
+
+                foreach (var dataType in databaseTableData.DataTypes)
+                {
+                    if (!TryGetCellData(pageData, checkDataRow, dataType.col, out string dataContent))
+                    {
+                        dataContent = string.Empty;
+                    }
+
+                    if (dataContent != string.Empty)
+                    {
+                        notEmptyDataCounter++;
+                    }
+
+                    data.Add(dataContent);
+                }
+
+                if (notEmptyDataCounter > 0)
+                {
+                    checkDataRow++;
+                    databaseTableData.DataValues.Add(data);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            databaseTableData.EndCol = databaseTableData.DataTypes.Count > 0
+                ? databaseTableData.DataTypes[^1].col
+                : databaseTableData.StartCol;
+
+            databaseTableData.EndRow = databaseTableData.DataValues.Count > 0
+                ? databaseTableData.StartRow + databaseTableData.DataValues.Count + 1
+                : databaseTableData.StartRow + 1;
+
+            return databaseTableData;
+        }
+        
+        public static bool ExtractTablesFromPage(string pageName, IList<IList<object>> pageData, out List<TableData> tableDataList)
+        {
+            tableDataList = new();
+            
+            var possibleTables = GetPossibleTables(pageName, pageData);
             
             foreach (var possibleTable in possibleTables)
             {
@@ -133,168 +299,123 @@ namespace ConfigGenerator
                 if (GetCellData(pageData, startRow, startCol + 1) == "type" &&
                     GetCellData(pageData, startRow, startCol + 2) == "value")
                 {
-                    ValueTableData valueTableData = new ValueTableData()
-                    {
-                        Name = possibleTable.name,
-                        StartRow = possibleTable.row,
-                        StartCol = possibleTable.col,
-                    };
-
-                    int idCol = startCol;
-                    int typeCol = startCol + 1;
-                    int valueCol = startCol + 2;
-                    int commentCol = startCol + 3;
-                    
-                    int checkDataRow = startRow + 1;
-
-                    while (true)
-                    {
-                        string id = GetCellData(pageData, checkDataRow, idCol);
-
-                        if (string.IsNullOrWhiteSpace(id))
-                        {
-                            break;
-                        }
-
-                        if (id.StartsWith('!'))
-                        {
-                            checkDataRow++;
-                            continue;
-                        }
-                        
-                        string type = GetCellData(pageData, checkDataRow, typeCol);
-                        
-                        if (string.IsNullOrWhiteSpace(type))
-                        {
-                            type = "string";
-                        }
-                        
-                        string value = GetCellData(pageData, checkDataRow, valueCol);
-                        
-                        if (string.IsNullOrWhiteSpace(value))
-                        {
-                            value = String.Empty;
-                        }
-                        
-                        string comment = GetCellData(pageData, checkDataRow, commentCol);
-                        
-                        if (string.IsNullOrWhiteSpace(comment))
-                        {
-                            comment = String.Empty;
-                        }
-                        
-                        valueTableData.Data.Add((checkDataRow, id, type, value, comment));
-                        checkDataRow++;
-                    }
-                    
-                    valueTableData.EndCol = valueTableData.StartCol + 2;
-                    
-                    valueTableData.EndRow = valueTableData.Data.Count > 0
-                        ? valueTableData.Data[^1].row
-                        : valueTableData.StartRow;
-                    
+                    TableData valueTableData = GetValueTableData(startRow, startCol, possibleTable.name, pageData);
                     tableDataList.Add(valueTableData);
                 }
                 else
                 {
-                    DatabaseTableData databaseTableData = new DatabaseTableData
-                    {
-                        Name = possibleTable.name,
-                        StartRow = possibleTable.row,
-                        StartCol = possibleTable.col,
-                    };
-
-                    int checkCol = startCol + 1;
-                    while (TryGetCellData(pageData, startRow, checkCol, out string cellData) && cellData != "")
-                    {
-                        // We skip column if its name starts with sign '!'
-                        if (cellData.StartsWith('!'))
-                        {
-                            checkCol++;
-                            continue;
-                        }
-
-                        if (!TryGetCellData(pageData, startRow + 1, checkCol, out string type))
-                        {
-                            // When type is empty we decide that type is equal "string"
-                            type = "string";
-                        }
-
-                        if (!TryGetCellData(pageData, startRow + -1, checkCol, out string comment))
-                        {
-                            comment = string.Empty;
-                        }
-                        
-                        databaseTableData.DataTypes.Add((cellData, type, comment, checkCol));
-                        
-                        checkCol++;
-                    }
-
-                    if (!TryGetCellData(pageData, startRow + 1, startCol, out string idType))
-                    {
-                        idType = "int";
-                    }
-                    
-                    databaseTableData.IdType = idType;
-
-                    int checkDataRow = startRow + 2;
-
-                    while (true)
-                    {
-                        List<string> data = new();
-                        int notEmptyDataCounter = 0;
-
-                        string id = GetCellData(pageData, checkDataRow, startCol);
-
-                        if (string.IsNullOrWhiteSpace(id))
-                        {
-                            id = string.Empty;
-                        }
-                        else
-                        {
-                            notEmptyDataCounter++;
-                        }
-                        
-                        data.Add(id);
-                        
-                        foreach (var dataType in databaseTableData.DataTypes)
-                        {
-                            if (!TryGetCellData(pageData, checkDataRow, dataType.col, out string dataContent))
-                            {
-                                dataContent = string.Empty;
-                            }
-
-                            if (dataContent != string.Empty)
-                            {
-                                notEmptyDataCounter++;
-                            }
-                            
-                            data.Add(dataContent);
-                        }
-
-                        if (notEmptyDataCounter > 0)
-                        {
-                            checkDataRow++;
-                            databaseTableData.DataValues.Add(data);
-                        }
-                        else
-                        {
-                            break;
-                        }
-                    }
-
-                    databaseTableData.EndCol = databaseTableData.DataTypes.Count > 0
-                        ? databaseTableData.DataTypes[^1].col
-                        : databaseTableData.StartCol;
-                    
-                    databaseTableData.EndRow = databaseTableData.DataValues.Count > 0
-                        ? databaseTableData.StartRow + databaseTableData.DataValues.Count + 1
-                        : databaseTableData.StartRow + 1;
-                    
+                    TableData databaseTableData = GetDatabaseTableData(startRow, startCol, possibleTable.name, pageData);
                     tableDataList.Add(databaseTableData);
                 }
             }
 
+            if (!ValidateTablesByOverlapping(tableDataList))
+            {
+                return false;
+            }
+            
+            if (!ValidateTablesByDuplicatesInNames(tableDataList))
+            {
+                return false;
+            }
+            
+            return true;
+        }
+
+        private static bool ValidateTablesByDuplicatesInNames(List<TableData> tableDataList)
+        {
+            bool isValid = true;
+            
+            foreach (var tableData in tableDataList)
+            {
+                if (tableData is ValueTableData valueTableData)
+                {
+                    Dictionary<string, int> idToRowMap = new();
+                    
+                    foreach (var data in valueTableData.Data)
+                    {
+                        if (idToRowMap.TryGetValue(data.id, out var row))
+                        {
+                            Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for id \"{data.id}\": " +
+                                              $"Row [{row + 1} and {data.row + 1}], " +
+                                              $"Col [{IndexToColumn(valueTableData.StartCol)}]");
+                            
+                            isValid = false;
+                        }
+                        else
+                        {
+                            idToRowMap.Add(data.id, data.row);
+                        }
+                    }
+                }
+                else if (tableData is DatabaseTableData databaseTableData)
+                {
+                    Dictionary<string, int> idToRowMap = new();
+                    bool isIntIdType = databaseTableData.IdType.Equals("int");
+                    
+                    for (var i = 0; i < databaseTableData.DataValues.Count; i++)
+                    {
+                        var rowData = databaseTableData.DataValues[i];
+                        var id = rowData[0];
+
+                        if (isIntIdType && string.IsNullOrWhiteSpace(id))
+                        {
+                            continue;
+                        }
+
+                        int currentRow = databaseTableData.StartRow + i + 2;
+                        
+                        if (idToRowMap.TryGetValue(id, out var row))
+                        {
+                            isValid = false;
+                            Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for id \"{id}\": " +
+                                            $"Row [{row + 1} and {currentRow + 1}], " +
+                                            $"Col [{IndexToColumn(databaseTableData.StartCol)}]");
+                        }
+                        else
+                        {
+                            idToRowMap.Add(id, currentRow);
+                        }
+                    }
+
+                    Dictionary<string, int> nameToColMap = new();
+                    
+                    foreach (var data in databaseTableData.DataTypes)
+                    {
+                        if (nameToColMap.TryGetValue(data.name, out var col))
+                        {
+                            isValid = false;
+                            
+                            Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for name \"{data.name}\": " +
+                                              $"Row [{databaseTableData.StartRow + 1}], " +
+                                              $"Col [{IndexToColumn(col)} and {IndexToColumn(data.col)}]");
+                        }
+                        else
+                        {
+                            nameToColMap.Add(data.name, data.col);
+                        }
+                    }
+                }
+            }
+
+            return isValid;
+        }
+
+        public static string IndexToColumn(int number)
+        {
+            string columnName = "";
+            while (number >= 0)  // Тепер працюємо з 0-based індексом
+            {
+                columnName = (char)('A' + (number % 26)) + columnName;
+                number = (number / 26) - 1; // Віднімаємо 1 після ділення
+            }
+            return columnName;
+        }
+        
+        private static bool ValidateTablesByOverlapping(List<TableData> tableDataList)
+        {
+            List<(TableData, TableData)> overlappedTables = new();
+            
             foreach (var table1 in tableDataList)
             {
                 foreach (var table2 in tableDataList)
@@ -306,12 +427,21 @@ namespace ConfigGenerator
                     
                     if (AreTablesOverlap(table1, table2))
                     {
-                        Console.WriteLine($"Tables \"{table1.Name}\" and {table2.Name} overlap.");
+                        if (!overlappedTables.Contains((table1, table2)) &&
+                            !overlappedTables.Contains((table2, table1)))
+                        {
+                            overlappedTables.Add((table1, table2));
+                        }
                     }
                 }
             }
-
-            return tableDataList;
+            
+            foreach (var tables in overlappedTables)
+            {
+                Console.WriteLine($"Tables \"{tables.Item1.Name}\" and {tables.Item2.Name} overlap.");
+            }
+            
+            return overlappedTables.Count == 0;
         }
 
         private static bool AreTablesOverlap(TableData table1, TableData table2)
