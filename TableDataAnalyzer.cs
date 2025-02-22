@@ -16,17 +16,34 @@ namespace ConfigGenerator
         public int EndRow;
         public int EndCol;
     }
+
+    public struct ValueTableDataItem
+    {
+        public int Row;
+        public string Id;
+        public string Type;
+        public string Value;
+        public string Comment;
+    }
     
     public class ValueTableData : TableData
     {
-        public List<(int row, string id, string type, string value, string comment)> Data = new();
+        public List<ValueTableDataItem> DataValues = new();
+    }
+
+    public struct DatabaseTableFieldDescriptorItem
+    {
+        public int Col;
+        public string FieldName;
+        public string TypeName;
+        public string Comment;
     }
     
     public class DatabaseTableData : TableData
     {
         public string IdType;
-        public List<(string name, string type, string comment, int col)> DataTypes = new();
-        public List<List<string>> DataValues = new();
+        public List<DatabaseTableFieldDescriptorItem> FieldDescriptors = new();
+        public List<List<string>> Values = new();
     }
 
     public class TableDataAnalyzer
@@ -138,48 +155,53 @@ namespace ConfigGenerator
 
             while (true)
             {
-                string id = GetCellData(pageData, checkDataRow, idCol);
+                ValueTableDataItem itemData = new ValueTableDataItem()
+                {
+                    Row = checkDataRow
+                };
+                
+                itemData.Id = GetCellData(pageData, checkDataRow, idCol);
 
-                if (string.IsNullOrWhiteSpace(id))
+                if (string.IsNullOrWhiteSpace(itemData.Id))
                 {
                     break;
                 }
 
-                if (id.StartsWith('!'))
+                if (itemData.Id.StartsWith('!'))
                 {
                     checkDataRow++;
                     continue;
                 }
 
-                string type = GetCellData(pageData, checkDataRow, typeCol);
+                itemData.Type = GetCellData(pageData, checkDataRow, typeCol);
 
-                if (string.IsNullOrWhiteSpace(type))
+                if (string.IsNullOrWhiteSpace(itemData.Type))
                 {
-                    type = "string";
+                    itemData.Type = "string";
                 }
 
-                string value = GetCellData(pageData, checkDataRow, valueCol);
+                itemData.Value = GetCellData(pageData, checkDataRow, valueCol);
 
-                if (string.IsNullOrWhiteSpace(value))
+                if (string.IsNullOrWhiteSpace(itemData.Value))
                 {
-                    value = String.Empty;
+                    itemData.Value = String.Empty;
                 }
 
-                string comment = GetCellData(pageData, checkDataRow, commentCol);
+                itemData.Comment = GetCellData(pageData, checkDataRow, commentCol);
 
-                if (string.IsNullOrWhiteSpace(comment))
+                if (string.IsNullOrWhiteSpace(itemData.Comment))
                 {
-                    comment = String.Empty;
+                    itemData.Comment = String.Empty;
                 }
 
-                valueTableData.Data.Add((checkDataRow, id, type, value, comment));
+                valueTableData.DataValues.Add(itemData);
                 checkDataRow++;
             }
 
             valueTableData.EndCol = valueTableData.StartCol + 2;
 
-            valueTableData.EndRow = valueTableData.Data.Count > 0
-                ? valueTableData.Data[^1].row
+            valueTableData.EndRow = valueTableData.DataValues.Count > 0
+                ? valueTableData.DataValues[^1].Row
                 : valueTableData.StartRow;
 
             return valueTableData;
@@ -196,27 +218,37 @@ namespace ConfigGenerator
             };
 
             int checkCol = startCol + 1;
-            while (TryGetCellData(pageData, startRow, checkCol, out string cellData) && cellData != "")
+            while (TryGetCellData(pageData, startRow, checkCol, out string fieldName) && fieldName != "")
             {
                 // We skip column if its name starts with sign '!'
-                if (cellData.StartsWith('!'))
+                if (fieldName.StartsWith('!'))
                 {
                     checkCol++;
                     continue;
                 }
+                
+                DatabaseTableFieldDescriptorItem typeItem = new DatabaseTableFieldDescriptorItem()
+                {
+                    FieldName = fieldName,
+                    Col = checkCol
+                };
 
-                if (!TryGetCellData(pageData, startRow + 1, checkCol, out string type))
+                if (!TryGetCellData(pageData, startRow + 1, checkCol, out string typeName))
                 {
                     // When type is empty we decide that type is equal "string"
-                    type = "string";
+                    typeName = "string";
                 }
+
+                typeItem.TypeName = typeName;
 
                 if (!TryGetCellData(pageData, startRow + -1, checkCol, out string comment))
                 {
                     comment = string.Empty;
                 }
+                
+                typeItem.Comment = comment;
 
-                databaseTableData.DataTypes.Add((cellData, type, comment, checkCol));
+                databaseTableData.FieldDescriptors.Add(typeItem);
 
                 checkCol++;
             }
@@ -248,9 +280,9 @@ namespace ConfigGenerator
 
                 data.Add(id);
 
-                foreach (var dataType in databaseTableData.DataTypes)
+                foreach (var dataType in databaseTableData.FieldDescriptors)
                 {
-                    if (!TryGetCellData(pageData, checkDataRow, dataType.col, out string dataContent))
+                    if (!TryGetCellData(pageData, checkDataRow, dataType.Col, out string dataContent))
                     {
                         dataContent = string.Empty;
                     }
@@ -266,7 +298,7 @@ namespace ConfigGenerator
                 if (notEmptyDataCounter > 0)
                 {
                     checkDataRow++;
-                    databaseTableData.DataValues.Add(data);
+                    databaseTableData.Values.Add(data);
                 }
                 else
                 {
@@ -274,12 +306,12 @@ namespace ConfigGenerator
                 }
             }
 
-            databaseTableData.EndCol = databaseTableData.DataTypes.Count > 0
-                ? databaseTableData.DataTypes[^1].col
+            databaseTableData.EndCol = databaseTableData.FieldDescriptors.Count > 0
+                ? databaseTableData.FieldDescriptors[^1].Col
                 : databaseTableData.StartCol;
 
-            databaseTableData.EndRow = databaseTableData.DataValues.Count > 0
-                ? databaseTableData.StartRow + databaseTableData.DataValues.Count + 1
+            databaseTableData.EndRow = databaseTableData.Values.Count > 0
+                ? databaseTableData.StartRow + databaseTableData.Values.Count + 1
                 : databaseTableData.StartRow + 1;
 
             return databaseTableData;
@@ -332,19 +364,19 @@ namespace ConfigGenerator
                 {
                     Dictionary<string, int> idToRowMap = new();
                     
-                    foreach (var data in valueTableData.Data)
+                    foreach (var data in valueTableData.DataValues)
                     {
-                        if (idToRowMap.TryGetValue(data.id, out var row))
+                        if (idToRowMap.TryGetValue(data.Id, out var row))
                         {
-                            Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for id \"{data.id}\": " +
-                                              $"Row [{row + 1} and {data.row + 1}], " +
+                            Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for id \"{data.Id}\": " +
+                                              $"Row [{row + 1} and {data.Row + 1}], " +
                                               $"Col [{IndexToColumn(valueTableData.StartCol)}]");
                             
                             isValid = false;
                         }
                         else
                         {
-                            idToRowMap.Add(data.id, data.row);
+                            idToRowMap.Add(data.Id, data.Row);
                         }
                     }
                 }
@@ -353,9 +385,9 @@ namespace ConfigGenerator
                     Dictionary<string, int> idToRowMap = new();
                     bool isIntIdType = databaseTableData.IdType.Equals("int");
                     
-                    for (var i = 0; i < databaseTableData.DataValues.Count; i++)
+                    for (var i = 0; i < databaseTableData.Values.Count; i++)
                     {
-                        var rowData = databaseTableData.DataValues[i];
+                        var rowData = databaseTableData.Values[i];
                         var id = rowData[0];
 
                         if (isIntIdType && string.IsNullOrWhiteSpace(id))
@@ -380,19 +412,19 @@ namespace ConfigGenerator
 
                     Dictionary<string, int> nameToColMap = new();
                     
-                    foreach (var data in databaseTableData.DataTypes)
+                    foreach (var data in databaseTableData.FieldDescriptors)
                     {
-                        if (nameToColMap.TryGetValue(data.name, out var col))
+                        if (nameToColMap.TryGetValue(data.FieldName, out var col))
                         {
                             isValid = false;
                             
-                            Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for name \"{data.name}\": " +
+                            Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for field name \"{data.FieldName}\": " +
                                               $"Row [{databaseTableData.StartRow + 1}], " +
-                                              $"Col [{IndexToColumn(col)} and {IndexToColumn(data.col)}]");
+                                              $"Col [{IndexToColumn(col)} and {IndexToColumn(data.Col)}]");
                         }
                         else
                         {
-                            nameToColMap.Add(data.name, data.col);
+                            nameToColMap.Add(data.FieldName, data.Col);
                         }
                     }
                 }
@@ -404,10 +436,10 @@ namespace ConfigGenerator
         public static string IndexToColumn(int number)
         {
             string columnName = "";
-            while (number >= 0)  // Тепер працюємо з 0-based індексом
+            while (number >= 0)
             {
                 columnName = (char)('A' + (number % 26)) + columnName;
-                number = (number / 26) - 1; // Віднімаємо 1 після ділення
+                number = (number / 26) - 1;
             }
             return columnName;
         }
