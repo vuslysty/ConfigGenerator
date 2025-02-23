@@ -3,6 +3,8 @@ using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
+using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using ConfigGenerator;
@@ -92,16 +94,48 @@ static async Task LoadGoogleCredentials()
     batchGetRequest.Ranges = ranges;
     BatchGetValuesResponse response = await batchGetRequest.ExecuteAsync();
 
+    CultureInfo.CurrentCulture = new CultureInfo("en-US");
+    
+    var allTables = new List<TableData>();
+    
     // Обробка отриманих даних
     foreach (var valueRange in response.ValueRanges)
     {
         var tableName = valueRange.Range.Split('!')[0];
-        TableDataAnalyzer.ExtractTablesFromPage(tableName, valueRange.Values, out List<TableData> resultTables);
-
-        // Console.WriteLine($"Дані з листа '{valueRange.Range}':");
-        // foreach (var row in valueRange.Values)
-        // {
-        //     Console.WriteLine(string.Join(", ", row));
-        // }
+        
+        if (TableDataUtilities.ExtractTablesFromPage(tableName, valueRange.Values, out List<TableData> resultTables))
+        {
+            allTables.AddRange(resultTables);
+        }
     }
+    
+    AvailableTypes availableTypes = new AvailableTypes();
+    
+    availableTypes.Register(new IntTypeDescriptor());
+    availableTypes.Register(new FloatTypeDescriptor());
+    availableTypes.Register(new StringTypeDescriptor());
+    availableTypes.Register(new BoolTypeDescriptor());
+
+    foreach (var tableData in allTables)
+    {
+        switch (tableData)
+        {
+            case ValueTableData valueTableData:
+                availableTypes.Register(new ValueTableTypeDescriptor(valueTableData));
+                break;
+            case DatabaseTableData databaseTableData:
+                if (databaseTableData.IdType == "string")
+                {
+                    availableTypes.Register(new DatabaseTableTypeDescriptor(databaseTableData));
+                }
+                break;
+        }
+    }
+
+    foreach (var tableData in allTables)
+    {
+        TableDataUtilities.ValidateTableTypes(tableData, availableTypes);
+    }
+    
+    Console.WriteLine("Available types:");
 }

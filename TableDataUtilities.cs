@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Numerics;
 using System.Text.RegularExpressions;
 
@@ -46,9 +45,107 @@ namespace ConfigGenerator
         public List<List<string>> Values = new();
     }
 
-    public class TableDataAnalyzer
+    public static class TableDataUtilities
     {
         private const string TableStartPattern = @"^#([A-Za-z][A-Za-z0-9_ ]*)$";
+
+        public static bool ExtractTablesFromPage(string pageName, IList<IList<object>> pageData, out List<TableData> tableDataList)
+        {
+            tableDataList = new();
+            
+            var possibleTables = GetPossibleTables(pageName, pageData);
+            
+            foreach (var possibleTable in possibleTables)
+            {
+                int startRow = possibleTable.row;
+                int startCol = possibleTable.col;
+
+                if (GetCellData(pageData, startRow, startCol + 1) == "type" &&
+                    GetCellData(pageData, startRow, startCol + 2) == "value")
+                {
+                    TableData valueTableData = GetValueTableData(startRow, startCol, possibleTable.name, pageData);
+                    tableDataList.Add(valueTableData);
+                }
+                else
+                {
+                    TableData databaseTableData = GetDatabaseTableData(startRow, startCol, possibleTable.name, pageData);
+                    tableDataList.Add(databaseTableData);
+                }
+            }
+
+            if (!ValidateTablesByOverlapping(tableDataList))
+            {
+                return false;
+            }
+            
+            if (!ValidateTablesByDuplicatesInNames(tableDataList))
+            {
+                return false;
+            }
+            
+            return true;
+        }
+
+        public static bool ValidateTableTypes(TableData tableData, AvailableTypes availableTypes)
+        {
+            bool isValid = true;
+            
+            switch (tableData)
+            {
+                case ValueTableData valueTableData:
+                    foreach (ValueTableDataItem dataValue in valueTableData.DataValues)
+                    {
+                        var typeDescriptor = availableTypes.GetTypeDescriptor(dataValue.Type);
+
+                        if (typeDescriptor == null)
+                        {
+                            isValid = false;
+                            Console.WriteLine($"Error: used invalid data type \"{dataValue.Type}\". " +
+                                              $"Table: {valueTableData.Name}, " +
+                                              $"Row: {dataValue.Row + 1}, " +
+                                              $"Col: {IndexToColumn(valueTableData.StartCol + 1)}");
+                        }
+                    }
+                    
+                    break;
+                
+                case DatabaseTableData databaseTableData:
+                    var idTypeDescriptor = availableTypes.GetTypeDescriptor(databaseTableData.IdType);
+
+                    if (idTypeDescriptor == null || 
+                        (databaseTableData.IdType != "string" && databaseTableData.IdType != "int"))
+                    {
+                        isValid = false;
+                        Console.WriteLine($"Error: used invalid data type \"{databaseTableData.IdType}\" for id. " +
+                                          $"Only valid types for id: \"string\" or \"int\". " +
+                                          $"Table: {databaseTableData.Name}, " +
+                                          $"Row: {databaseTableData.StartRow + 2}, " +
+                                          $"Col: {IndexToColumn(databaseTableData.StartCol)}.");
+                    }
+                    
+                    foreach (var fieldDescriptor in databaseTableData.FieldDescriptors)
+                    {
+                        var typeDescriptor = availableTypes.GetTypeDescriptor(fieldDescriptor.TypeName);
+
+                        if (typeDescriptor == null)
+                        {
+                            isValid = false;
+                            Console.WriteLine($"Error: used invalid data type \"{fieldDescriptor.TypeName}\". " +
+                                              $"Table: {databaseTableData.Name}, " +
+                                              $"Row: {databaseTableData.StartRow + 2}, " +
+                                              $"Col: {IndexToColumn(fieldDescriptor.Col)}.");
+                        }
+                    }
+                    
+                    break;
+                default:
+                    Console.WriteLine("Error: tried to validate an unsupported table type");
+                    isValid = false;
+                    break;
+            }
+
+            return isValid;
+        }
 
         private static List<(string name, int row, int col)> GetPossibleTables(
             string pageName,
@@ -315,43 +412,6 @@ namespace ConfigGenerator
                 : databaseTableData.StartRow + 1;
 
             return databaseTableData;
-        }
-        
-        public static bool ExtractTablesFromPage(string pageName, IList<IList<object>> pageData, out List<TableData> tableDataList)
-        {
-            tableDataList = new();
-            
-            var possibleTables = GetPossibleTables(pageName, pageData);
-            
-            foreach (var possibleTable in possibleTables)
-            {
-                int startRow = possibleTable.row;
-                int startCol = possibleTable.col;
-
-                if (GetCellData(pageData, startRow, startCol + 1) == "type" &&
-                    GetCellData(pageData, startRow, startCol + 2) == "value")
-                {
-                    TableData valueTableData = GetValueTableData(startRow, startCol, possibleTable.name, pageData);
-                    tableDataList.Add(valueTableData);
-                }
-                else
-                {
-                    TableData databaseTableData = GetDatabaseTableData(startRow, startCol, possibleTable.name, pageData);
-                    tableDataList.Add(databaseTableData);
-                }
-            }
-
-            if (!ValidateTablesByOverlapping(tableDataList))
-            {
-                return false;
-            }
-            
-            if (!ValidateTablesByDuplicatesInNames(tableDataList))
-            {
-                return false;
-            }
-            
-            return true;
         }
 
         private static bool ValidateTablesByDuplicatesInNames(List<TableData> tableDataList)
