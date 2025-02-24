@@ -86,7 +86,7 @@ namespace ConfigGenerator
             return true;
         }
 
-        public static bool ValidateTableTypes(TableData tableData, AvailableTypes availableTypes)
+        public static bool ValidateTableTypesAndValues(TableData tableData, AvailableTypes availableTypes)
         {
             bool isValid = true;
             
@@ -104,6 +104,20 @@ namespace ConfigGenerator
                                               $"Table: {valueTableData.Name}, " +
                                               $"Row: {dataValue.Row + 1}, " +
                                               $"Col: {IndexToColumn(valueTableData.StartCol + 1)}");
+                            
+                            continue;
+                        }
+
+                        var parsedValue = typeDescriptor.Parse(dataValue.Value);
+
+                        if (parsedValue == null)
+                        {
+                            isValid = false;
+                            Console.WriteLine($"Error: used invalid data value \"{dataValue.Value}\", " +
+                                              $"for type: \"{dataValue.Type}\". " +
+                                              $"Table: {valueTableData.Name}, " +
+                                              $"Row: {dataValue.Row + 1}, " +
+                                              $"Col: {IndexToColumn(valueTableData.StartCol + 2)}");
                         }
                     }
                     
@@ -122,9 +136,29 @@ namespace ConfigGenerator
                                           $"Row: {databaseTableData.StartRow + 2}, " +
                                           $"Col: {IndexToColumn(databaseTableData.StartCol)}.");
                     }
-                    
-                    foreach (var fieldDescriptor in databaseTableData.FieldDescriptors)
+                    else
                     {
+                        // Validate id values
+                        for (var i = 0; i < databaseTableData.Values.Count; i++)
+                        {
+                            var valuesLine = databaseTableData.Values[i];
+                            string idValue = valuesLine[0];
+                            var parsedValue = idTypeDescriptor.Parse(idValue);
+
+                            if (parsedValue == null)
+                            {
+                                Console.WriteLine($"Error: used invalid data value \"{idValue}\", " +
+                                                  $"for type: \"{idTypeDescriptor.TypeName}\". " +
+                                                  $"Table: {databaseTableData.Name}, " +
+                                                  $"Row: {databaseTableData.StartRow + 3 + i}, " +
+                                                  $"Col: {IndexToColumn(databaseTableData.StartCol)}.");
+                            }
+                        }
+                    }
+
+                    for (var fieldIndex = 0; fieldIndex < databaseTableData.FieldDescriptors.Count; fieldIndex++)
+                    {
+                        var fieldDescriptor = databaseTableData.FieldDescriptors[fieldIndex];
                         var typeDescriptor = availableTypes.GetTypeDescriptor(fieldDescriptor.TypeName);
 
                         if (typeDescriptor == null)
@@ -134,9 +168,26 @@ namespace ConfigGenerator
                                               $"Table: {databaseTableData.Name}, " +
                                               $"Row: {databaseTableData.StartRow + 2}, " +
                                               $"Col: {IndexToColumn(fieldDescriptor.Col)}.");
+                            continue;
+                        }
+
+                        for (var lineIndex = 0; lineIndex < databaseTableData.Values.Count; lineIndex++)
+                        {
+                            var valuesLine = databaseTableData.Values[lineIndex];
+                            var valueStr = valuesLine[fieldIndex + 1];
+                            var parsedValue = typeDescriptor.Parse(valueStr);
+                            
+                            if (parsedValue == null)
+                            {
+                                Console.WriteLine($"Error: used invalid data value \"{valueStr}\", " +
+                                                  $"for type \"{fieldDescriptor.TypeName}\". " +
+                                                  $"Table: {databaseTableData.Name}, " +
+                                                  $"Row: {databaseTableData.StartRow + 3 + lineIndex}, " +
+                                                  $"Col: {IndexToColumn(fieldDescriptor.Col)}.");
+                            }
                         }
                     }
-                    
+
                     break;
                 default:
                     Console.WriteLine("Error: tried to validate an unsupported table type");

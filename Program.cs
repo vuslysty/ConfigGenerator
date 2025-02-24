@@ -134,7 +134,7 @@ static async Task LoadGoogleCredentials()
 
     foreach (var tableData in allTables)
     {
-        TableDataUtilities.ValidateTableTypes(tableData, availableTypes);
+        TableDataUtilities.ValidateTableTypesAndValues(tableData, availableTypes);
     }
     
     Console.WriteLine("Available types:");
