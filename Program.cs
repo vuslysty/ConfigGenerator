@@ -110,11 +110,7 @@ static async Task LoadGoogleCredentials()
     }
     
     AvailableTypes availableTypes = new AvailableTypes();
-    
-    availableTypes.Register(new IntTypeDescriptor());
-    availableTypes.Register(new FloatTypeDescriptor());
-    availableTypes.Register(new StringTypeDescriptor());
-    availableTypes.Register(new BoolTypeDescriptor());
+    availableTypes.RegisterDefaultTypes();
 
     foreach (var tableData in allTables)
     {

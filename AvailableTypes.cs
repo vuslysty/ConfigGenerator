@@ -22,7 +22,7 @@ public abstract class TypeDescriptor
     }
 }
 
-class IntTypeDescriptor : TypeDescriptor
+public class IntTypeDescriptor : TypeDescriptor
 {
     public IntTypeDescriptor() : base("int") { }
 
@@ -62,7 +62,7 @@ class IntTypeDescriptor : TypeDescriptor
     }
 }
 
-class FloatTypeDescriptor : TypeDescriptor
+public class FloatTypeDescriptor : TypeDescriptor
 {
     public FloatTypeDescriptor() : base("float") { }
 
@@ -85,7 +85,7 @@ class FloatTypeDescriptor : TypeDescriptor
     }
 }
 
-class StringTypeDescriptor : TypeDescriptor
+public class StringTypeDescriptor : TypeDescriptor
 {
     public StringTypeDescriptor() : base("string") { }
 
@@ -100,7 +100,7 @@ class StringTypeDescriptor : TypeDescriptor
     }
 }
 
-class BoolTypeDescriptor : TypeDescriptor
+public class BoolTypeDescriptor : TypeDescriptor
 {
     public BoolTypeDescriptor() : base("bool") { }
 
@@ -161,11 +161,9 @@ class DatabaseTableTypeDescriptor : TypeDescriptor
             return null;
         }
         
-        foreach (List<string> valueData in _tableData.Values)
+        foreach (DatabaseTableValuesLineData valueData in _tableData.ValueLines)
         {
-            string id = valueData.First();
-
-            if (value == id)
+            if (value == valueData.Id)
             {
                 return valueData;
             }
@@ -177,6 +175,11 @@ class DatabaseTableTypeDescriptor : TypeDescriptor
 
 public class AvailableTypes
 {
+    public static readonly IntTypeDescriptor Int = new();
+    public static readonly FloatTypeDescriptor Float = new();
+    public static readonly StringTypeDescriptor String = new();
+    public static readonly BoolTypeDescriptor Bool = new();
+    
     private readonly List<TypeDescriptor> _types = new();
 
     public bool Register(TypeDescriptor type)
@@ -189,6 +192,14 @@ public class AvailableTypes
         
         _types.Add(type);
         return true;
+    }
+
+    public void RegisterDefaultTypes()
+    {
+        Register(Int);
+        Register(Float);
+        Register(String);
+        Register(Bool);
     }
 
     public TypeDescriptor? GetTypeDescriptor(string typeName) =>
