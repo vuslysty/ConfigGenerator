@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
 using Humanizer;
@@ -68,7 +69,7 @@ namespace ConfigGenerator
                 int startRow = possibleTable.row;
                 int startCol = possibleTable.col;
                 
-                string tableName = possibleTable.name.Pascalize().Replace(" ", "");
+                string tableName = ExtractTypeName(possibleTable.name);
 
                 if (GetCellData(pageData, startRow, startCol + 1) == "type" &&
                     GetCellData(pageData, startRow, startCol + 2) == "value")
@@ -277,6 +278,7 @@ namespace ConfigGenerator
             try
             {
                 cellData = (string)pageData[row][col];
+                cellData = cellData.Trim();
             }
             catch
             {
@@ -335,16 +337,9 @@ namespace ConfigGenerator
 
                 itemData.Type = GetCellData(pageData, checkDataRow, typeCol);
 
-                if (string.IsNullOrWhiteSpace(itemData.Type))
-                {
-                    itemData.Type = "string";
-                }
-                
-                if (itemData.Type.StartsWith('$'))
-                {
-                    itemData.Type = itemData.Type.TrimStart('$');
-                    itemData.Type = itemData.Type.Pascalize().Replace(" ", "");
-                }
+                itemData.Type = string.IsNullOrWhiteSpace(itemData.Type) 
+                    ? "string" 
+                    : ExtractTypeName(itemData.Type);
 
                 itemData.Value = GetCellData(pageData, checkDataRow, valueCol);
 
@@ -393,7 +388,7 @@ namespace ConfigGenerator
                     continue;
                 }
                 
-                fieldName = fieldName.Trim().Pascalize().Replace(" ", "");
+                fieldName = ExtractFieldName(fieldName);
                 
                 DatabaseTableFieldDescriptorItem typeItem = new DatabaseTableFieldDescriptorItem()
                 {
@@ -406,13 +401,8 @@ namespace ConfigGenerator
                     // When type is empty we decide that type is equal "string"
                     typeName = "string";
                 }
-
-                if (typeName.StartsWith('$'))
-                {
-                    typeName = typeName.TrimStart('$');
-                    typeName = typeName.Pascalize().Replace(" ", "");
-                }
-
+                
+                typeName = ExtractTypeName(typeName);
                 typeItem.TypeName = typeName;
 
                 if (!TryGetCellData(pageData, startRow - 1, checkCol, out string comment))
@@ -785,6 +775,30 @@ namespace ConfigGenerator
             const string fieldNamePattern = @"^([A-Za-z_][A-Za-z0-9_]*)$";
             
             return Regex.IsMatch(value, fieldNamePattern);
+        }
+
+        private static string ExtractTypeName(string value)
+        {
+            string result = value;
+            
+            if (value.StartsWith('$'))
+            {
+                result = result.TrimStart('$').Pascalize();
+            }
+            
+            return RemoveWhitespaces(result);
+        }
+        
+        private static string ExtractFieldName(string value)
+        {
+            string result = value.Pascalize();
+            return RemoveWhitespaces(result);
+        }
+
+        private static string RemoveWhitespaces(string value)
+        {
+            string result = new string(value.Where(c => !char.IsWhiteSpace(c)).ToArray());
+            return result;
         }
     }
 }
