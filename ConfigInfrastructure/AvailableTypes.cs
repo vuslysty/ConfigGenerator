@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ConfigGenerator;
+namespace ConfigGenerator.ConfigInfrastructure;
 
 public abstract class TypeDescriptor
 {
@@ -14,12 +14,6 @@ public abstract class TypeDescriptor
     }
 
     public abstract object? Parse(string value);
-
-    public bool Validate(string value)
-    {
-        var parsedValue = Parse(value);
-        return parsedValue != null;
-    }
 }
 
 public class IntTypeDescriptor : TypeDescriptor
@@ -114,34 +108,6 @@ public class BoolTypeDescriptor : TypeDescriptor
         }
         
         return bool.TryParse(value, out result) ? result : null;
-    }
-}
-
-class ValueTableTypeDescriptor : TypeDescriptor
-{
-    private ValueTableData _tableData;
-    
-    public ValueTableTypeDescriptor(ValueTableData tableData) : base(tableData.Name)
-    {
-        _tableData = tableData;
-    }
-    
-    public override object? Parse(string value)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return null;
-        }
-        
-        foreach (ValueTableDataItem dataValue in _tableData.DataValues)
-        {
-            if (dataValue.Id == value)
-            {
-                return dataValue;
-            }
-        }
-        
-        return null;
     }
 }
 

@@ -8,10 +8,14 @@ using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
 using ConfigGenerator;
+using ConfigGenerator.ConfigInfrastructure;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+
 
 // Створення об'єкту CodeCompileUnit
 var compileUnit = new CodeCompileUnit();
@@ -52,9 +56,9 @@ using (var writer = new StringWriter())
 {
     provider.GenerateCodeFromCompileUnit(compileUnit, writer, options);
     Console.WriteLine(writer.ToString());
-
-    await LoadGoogleCredentials();
 }
+
+await LoadGoogleCredentials();
 
 static async Task LoadGoogleCredentials()
 {
@@ -116,11 +120,8 @@ static async Task LoadGoogleCredentials()
     {
         switch (tableData)
         {
-            case ValueTableData valueTableData:
-                availableTypes.Register(new ValueTableTypeDescriptor(valueTableData));
-                break;
             case DatabaseTableData databaseTableData:
-                if (databaseTableData.IdType == "string")
+                if (databaseTableData.IdType == AvailableTypes.String.TypeName)
                 {
                     availableTypes.Register(new DatabaseTableTypeDescriptor(databaseTableData));
                 }
@@ -132,6 +133,12 @@ static async Task LoadGoogleCredentials()
     {
         TableDataUtilities.ValidateTableTypesAndValues(tableData, availableTypes);
     }
+
+    string json = TableDataSerializer.Serialize(allTables);
+    List<TableData> deserializeObject = TableDataSerializer.Deserialize(json);
     
-    Console.WriteLine("Available types:");
+    Configs configs = new Configs();
+    configs.Initialize(deserializeObject);
+    
+    Console.WriteLine(json);
 }

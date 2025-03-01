@@ -3,23 +3,31 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+using ConfigGenerator.ConfigInfrastructure;
 using Humanizer;
 
 namespace ConfigGenerator
 {
+    [Serializable]
     public class TableData
     {
         public string Name;
         
+        [NonSerialized]
         public int StartRow;
+        [NonSerialized]
         public int StartCol;
         
+        [NonSerialized]
         public int EndRow;
+        [NonSerialized]
         public int EndCol;
     }
 
-    public struct ValueTableDataItem
+    [Serializable]
+    public class ValueTableDataItem
     {
+        [NonSerialized]
         public int Row;
         public string Id;
         public string Type;
@@ -27,26 +35,32 @@ namespace ConfigGenerator
         public string Comment;
     }
     
+    [Serializable]
     public class ValueTableData : TableData
     {
         public List<ValueTableDataItem> DataValues = new();
     }
 
-    public struct DatabaseTableFieldDescriptorItem
+    [Serializable]
+    public class DatabaseTableFieldDescriptorItem
     {
+        [NonSerialized]
         public int Col;
         public string FieldName;
         public string TypeName;
         public string Comment;
     }
     
+    [Serializable]
     public class DatabaseTableValuesLineData
     {
+        [NonSerialized]
         public int Row;
         public string Id;
         public List<string> Values = new();
     }
     
+    [Serializable]
     public class DatabaseTableData : TableData
     {
         public string IdType;
