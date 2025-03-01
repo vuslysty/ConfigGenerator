@@ -150,17 +150,18 @@ public abstract class DatabaseConfigTable<TItem, TId> : IDatabaseConfigTable
                 continue;
             }
 
-            foreach (var lineData in databaseTableData.ValueLines)
+            for (var lineIndex = 0; lineIndex < databaseTableData.ValueLines.Count; lineIndex++)
             {
+                var lineData = databaseTableData.ValueLines[lineIndex];
                 string valueStr = lineData.Values[fieldIndex];
                 var parsedValue = availableTypes.ParseValue(fieldDescriptor.TypeName, valueStr);
-                
+
                 if (parsedValue == null)
                 {
                     throw new Exception($"Cannot parse value \"{valueStr}\" of type: {fieldDescriptor.TypeName}");
                 }
-                
-                var item = Items[fieldIndex];
+
+                var item = Items[lineIndex];
                 property.SetValue(item, parsedValue);
             }
         }
