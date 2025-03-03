@@ -19,7 +19,7 @@ public class General : ValueConfigTable
     /// <summary>
     /// It's health
     /// </summary>
-    public float health { get; private set; }
+    public float health { get; }
 
     public string playerName { get; private set; }
     

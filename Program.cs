@@ -3,9 +3,9 @@ using System;
 using System.CodeDom;
 using System.CodeDom.Compiler;
 using System.Collections.Generic;
-using System.Data;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using ConfigGenerator;
 using ConfigGenerator.ConfigInfrastructure;
@@ -13,54 +13,14 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-
-
-// Створення об'єкту CodeCompileUnit
-var compileUnit = new CodeCompileUnit();
-
-// Створення простору імен
-var namespaceDeclaration = new CodeNamespace("MyNamespace");
-
-// Створення класу
-var classDeclaration = new CodeTypeDeclaration("MyClass");
-classDeclaration.IsClass = true;
-
-// Додавання поля до класу
-var field = new CodeMemberField(typeof(string), "myField");
-classDeclaration.Members.Add(field);
-
-// Додавання властивості до класу
-var property = new CodeMemberProperty();
-property.Name = "MyProperty";
-property.Type = new CodeTypeReference(typeof(string));
-property.Attributes = MemberAttributes.Public | MemberAttributes.Final;
-property.GetStatements.Add(new CodeMethodReturnStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "myField")));
-property.SetStatements.Add(new CodeAssignStatement(new CodeFieldReferenceExpression(new CodeThisReferenceExpression(), "myField"), new CodePropertySetValueReferenceExpression()));
-classDeclaration.Members.Add(property);
-
-// Додавання класу до простору імен
-namespaceDeclaration.Types.Add(classDeclaration);
-compileUnit.Namespaces.Add(namespaceDeclaration);
-
-// Створення генератора коду
-var provider = CodeDomProvider.CreateProvider("CSharp");
-
-// Визначення параметрів генерації
-var options = new CodeGeneratorOptions();
-options.BracingStyle = "C";
-
-// Генерація коду та запис у файл
-using (var writer = new StringWriter())
-{
-    provider.GenerateCodeFromCompileUnit(compileUnit, writer, options);
-    Console.WriteLine(writer.ToString());
-}
+using Humanizer;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 await LoadGoogleCredentials();
 
-static async Task LoadGoogleCredentials()
+async Task LoadGoogleCredentials()
 {
     string[] Scopes = { SheetsService.Scope.SpreadsheetsReadonly };
     string ApplicationName = "Google Sheets API Example";
@@ -137,8 +97,169 @@ static async Task LoadGoogleCredentials()
     string json = TableDataSerializer.Serialize(allTables);
     List<TableData> deserializeObject = TableDataSerializer.Deserialize(json);
     
-    Configs configs = new Configs();
-    configs.Initialize(deserializeObject);
+    // Configs configs = new Configs();
+    // configs.Initialize(deserializeObject);
+
+    //GenerateConfigClasses(allTables);
     
-    Console.WriteLine(json);
+    var code = CodeGenerator.GenerateConfigClasses(allTables);
+    Console.WriteLine(code);
+}
+
+public class CodeGenerator
+{
+    public static string GenerateConfigClasses(List<TableData> tables)
+    {
+        List<ClassDeclarationSyntax> classes = new List<ClassDeclarationSyntax>();
+        
+        classes.Add(GenerateConfigClass(tables));
+
+        foreach (var table in tables)
+        {
+            if (table is ValueTableData valueTableData)
+            {
+                classes.Add(GenerateValueTableClass(valueTableData, tables));
+            }
+            else if (table is DatabaseTableData databaseTableData)
+            {
+                classes.Add(GenerateDatabaseTableClass(databaseTableData, tables));
+            }
+        }
+        
+        var namespaceDecl = SyntaxFactory
+            .NamespaceDeclaration(SyntaxFactory.ParseName("YourNamespace"))
+            .AddMembers(classes.ToArray());
+
+        var syntaxTree = SyntaxFactory.CompilationUnit()
+            .AddUsings(SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("ConfigGenerator.ConfigInfrastructure")))
+            .AddMembers(namespaceDecl);
+
+        var formattedCode = syntaxTree.NormalizeWhitespace().ToFullString();
+        return formattedCode;
+    }
+
+    private static ClassDeclarationSyntax GenerateValueTableClass(ValueTableData valueTableData, List<TableData> allTables)
+    {
+        var valueTableClass = SyntaxFactory.ClassDeclaration(valueTableData.Name)
+            .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+            .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName("ValueConfigTable")));
+
+        List<MemberDeclarationSyntax> properties = new List<MemberDeclarationSyntax>();
+        
+        foreach (var dataItem in valueTableData.DataValues)
+        {
+            var property = CreateProperty(dataItem.Type, dataItem.Id, dataItem.Comment, allTables);
+            properties.Add(property);
+        }
+
+        return valueTableClass.AddMembers(properties.ToArray());
+    }
+    
+    private static ClassDeclarationSyntax GenerateDatabaseTableClass(DatabaseTableData databaseTableData, List<TableData> allTables)
+    {
+        var itemClass = SyntaxFactory.ClassDeclaration("Item")
+            .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+            .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName(
+                $"IConfigTableItem<{databaseTableData.IdType}>")))
+            .AddMembers(
+                CreateProperty(databaseTableData.IdType, "Id", null, allTables),
+                CreateProperty("int", "Index", null, allTables)
+            );
+        
+        var properties = new List<MemberDeclarationSyntax>();
+        
+        foreach (var fieldDescriptor in databaseTableData.FieldDescriptors)
+        {
+            var property = CreateProperty(fieldDescriptor.TypeName, fieldDescriptor.FieldName, fieldDescriptor.Comment,
+                allTables);
+            
+            properties.Add(property);
+        }
+
+        itemClass = itemClass.AddMembers(properties.ToArray());
+        
+        var databaseTableClass = SyntaxFactory.ClassDeclaration(databaseTableData.Name)
+            .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+            .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName(
+                $"DatabaseConfigTable<{databaseTableData.Name}.Item, {databaseTableData.IdType}>")))
+            .AddMembers(itemClass);
+        
+        return databaseTableClass;
+    }
+
+    private static ClassDeclarationSyntax GenerateConfigClass(List<TableData> tables)
+    {
+        var configClass = SyntaxFactory.ClassDeclaration("Configs")
+            .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+            .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName("ConfigsBase")));
+        
+        foreach (var table in tables)
+        {
+            var fieldName = $"_{table.Name.Camelize()}";
+
+            var tableType = SyntaxFactory.ParseTypeName(table.Name);
+            
+            var fieldDeclaration = SyntaxFactory.VariableDeclaration(tableType)
+                .AddVariables(SyntaxFactory.VariableDeclarator(fieldName)
+                    .WithInitializer(SyntaxFactory.EqualsValueClause(
+                        SyntaxFactory.ObjectCreationExpression(tableType)
+                            .WithArgumentList(SyntaxFactory.ArgumentList()))));
+
+            var field = SyntaxFactory.FieldDeclaration(fieldDeclaration)
+                .AddModifiers(SyntaxFactory.Token(SyntaxKind.PrivateKeyword), SyntaxFactory.Token(SyntaxKind.ReadOnlyKeyword));
+
+            var property = SyntaxFactory.PropertyDeclaration(tableType, table.Name)
+                .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+                .WithExpressionBody(SyntaxFactory.ArrowExpressionClause(
+                    SyntaxFactory.InvocationExpression(
+                            SyntaxFactory.IdentifierName("GetConfig"))
+                        .WithArgumentList(SyntaxFactory.ArgumentList(
+                            SyntaxFactory.SingletonSeparatedList(
+                                SyntaxFactory.Argument(SyntaxFactory.IdentifierName(fieldName)))))))
+                .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken));
+            
+            configClass = configClass.AddMembers(field, property);
+        }
+        
+        return configClass;
+    }
+
+    private static PropertyDeclarationSyntax CreateProperty(string type, string name, string comment,
+        List<TableData> allTables)
+    {
+        var propertyTypeName = allTables.Exists(data => data.Name == type)
+            ? $"{type}.Item"
+            : type;
+
+        var property = SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName(propertyTypeName), name)
+            .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
+            .WithAccessorList(SyntaxFactory.AccessorList(
+                SyntaxFactory.List(new[]
+                {
+                    SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
+                        .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
+                })));
+
+        if (!string.IsNullOrWhiteSpace(comment))
+        {
+            property = property.WithLeadingTrivia(CreateXmlComment(comment));
+        }
+
+        return property;
+    }
+    
+    private static SyntaxTriviaList CreateXmlComment(string commentText)
+    {
+        var lines = commentText.Split('\n')
+            .Select(line => "/// " + line.Trim())
+            .Prepend("/// <summary>")
+            .Append("/// </summary>");
+
+        var triviaList = lines
+            .SelectMany(line => new[] { 
+                SyntaxFactory.Comment(line) })
+            .ToArray();
+
+        return SyntaxFactory.TriviaList(triviaList);
+    }
 }
