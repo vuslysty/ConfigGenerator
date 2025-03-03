@@ -12,6 +12,16 @@ public abstract class DatabaseConfigTable<TItem, TId> : IDatabaseConfigTable
 
     private readonly Dictionary<TId, TItem> _idToItemMap = new();
 
+    public TItem GetItemWithId(TId id)
+    {
+        if (TryGetItemWithId(id, out TItem item))
+        {
+            return item;
+        }
+
+        return default!;
+    }
+    
     public bool TryGetItemWithId(TId id, out TItem item)
     {
         return _idToItemMap.TryGetValue(id, out item);
