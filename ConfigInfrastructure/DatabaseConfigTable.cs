@@ -10,6 +10,8 @@ public abstract class DatabaseConfigTable<TItem, TId> : IDatabaseConfigTable
     public List<TItem> Items { get; } = new();
     public int Count => Items.Count;
 
+    public TItem this[TId id] => GetItemWithId(id);
+
     private readonly Dictionary<TId, TItem> _idToItemMap = new();
 
     public TItem GetItemWithId(TId id)

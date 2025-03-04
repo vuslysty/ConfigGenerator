@@ -12,8 +12,9 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
+using TestNamespace;
 using CodeGenerator = ConfigGenerator.ConfigInfrastructure.CodeGenerator;
-using Configs = YourNamespace.Configs;
+//using Configs = YourNamespace.Configs;
 
 await LoadGoogleCredentials();
 
@@ -94,10 +95,7 @@ async Task LoadGoogleCredentials()
     string json = TableDataSerializer.Serialize(allTables);
     List<TableData> deserializeObject = TableDataSerializer.Deserialize(json);
     
-    Configs configs = new Configs();
-    configs.Initialize(deserializeObject);
-    
-    var code = CodeGenerator.GenerateConfigClasses(allTables);
+    var code = CodeGenerator.GenerateConfigClasses(allTables, "MyConfig","TestNamespace");
     
     // 🛠 Отримуємо шлях до папки з `Main()`
     string projectDirectory = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)

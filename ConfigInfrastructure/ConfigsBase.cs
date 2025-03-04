@@ -4,7 +4,7 @@ using System.Reflection;
 
 namespace ConfigGenerator.ConfigInfrastructure;
 
-public class ConfigsBase
+public abstract class ConfigsBase
 {
     private class DatabaseTypeDescriptor : TypeDescriptor
     {
@@ -26,16 +26,16 @@ public class ConfigsBase
         }
     }
     
-    private bool _initialized;
+    protected bool _initialized;
     private Dictionary<string, IConfigTable> _nameToConfigTableMap;
 
-    public void Initialize(string jsonData)
+    protected void Initialize(string jsonData)
     {
         var tables = TableDataSerializer.Deserialize(jsonData);
         Initialize(tables);
     }
     
-    public void Initialize(List<TableData> tables)
+    protected void Initialize(List<TableData> tables)
     {
         FillNameToConfigTableMap();
         AvailableTypes availableTypes = GetAvailableTypes();
@@ -53,16 +53,6 @@ public class ConfigsBase
         }
         
         _initialized = true;
-    }
-
-    protected T GetConfig<T>(T config) where T : IConfigTable
-    {
-        if (!_initialized)
-        {
-            Console.WriteLine($"{GetType().Name} not initialized");
-            return default!;
-        }
-        return config;
     }
 
     private AvailableTypes GetAvailableTypes()
