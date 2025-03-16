@@ -11,6 +11,19 @@ public static class CodeGenerator
 {
     public static string GenerateConfigClasses(List<TableData> tables, string className, string namespaceName)
     {
+        AvailableTypes availableTypes = new AvailableTypes();
+        availableTypes.RegisterDefaultTypes();
+
+        foreach (var tableData in tables)
+        {
+            switch (tableData)
+            {
+                case DatabaseTableData databaseTableData:
+                    availableTypes.Register(new DatabaseTableTypeDescriptor(databaseTableData));
+                    break;
+            }
+        }
+        
         List<ClassDeclarationSyntax> classes = new List<ClassDeclarationSyntax>();
         
         classes.Add(GenerateConfigClass(tables, className));
@@ -19,11 +32,11 @@ public static class CodeGenerator
         {
             if (table is ValueTableData valueTableData)
             {
-                classes.Add(GenerateValueTableClass(valueTableData, tables));
+                classes.Add(GenerateValueTableClass(valueTableData, availableTypes));
             }
             else if (table is DatabaseTableData databaseTableData)
             {
-                classes.Add(GenerateDatabaseTableClass(databaseTableData, tables));
+                classes.Add(GenerateDatabaseTableClass(databaseTableData, availableTypes));
             }
         }
         
@@ -42,7 +55,7 @@ public static class CodeGenerator
         return formattedCode;
     }
 
-    private static ClassDeclarationSyntax GenerateValueTableClass(ValueTableData valueTableData, List<TableData> allTables)
+    private static ClassDeclarationSyntax GenerateValueTableClass(ValueTableData valueTableData, AvailableTypes availableTypes)
     {
         var valueTableClass = SyntaxFactory.ClassDeclaration(valueTableData.Name)
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
@@ -52,30 +65,33 @@ public static class CodeGenerator
         
         foreach (var dataItem in valueTableData.DataValues)
         {
-            var property = CreateProperty(dataItem.Type, dataItem.Id, dataItem.Comment, allTables);
+            var typeDescriptor = availableTypes.GetTypeDescriptor(dataItem.Type);
+            var property = CreateProperty(typeDescriptor.RealTypeName, dataItem.Id, dataItem.Comment);
             properties.Add(property);
         }
 
         return valueTableClass.AddMembers(properties.ToArray());
     }
     
-    private static ClassDeclarationSyntax GenerateDatabaseTableClass(DatabaseTableData databaseTableData, List<TableData> allTables)
+    private static ClassDeclarationSyntax GenerateDatabaseTableClass(DatabaseTableData databaseTableData, AvailableTypes availableTypes)
     {
+        var idTypeDescriptor = availableTypes.GetTypeDescriptor(databaseTableData.IdType);
+        
         var itemClass = SyntaxFactory.ClassDeclaration("Item")
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
             .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName(
                 $"IConfigTableItem<{databaseTableData.IdType}>")))
             .AddMembers(
-                CreateProperty(databaseTableData.IdType, "Id", null, allTables),
-                CreateProperty("int", "Index", null, allTables)
+                CreateProperty(idTypeDescriptor.RealTypeName, "Id", null),
+                CreateProperty(AvailableTypes.Int.RealTypeName, "Index", null)
             );
         
         var properties = new List<MemberDeclarationSyntax>();
         
         foreach (var fieldDescriptor in databaseTableData.FieldDescriptors)
         {
-            var property = CreateProperty(fieldDescriptor.TypeName, fieldDescriptor.FieldName, fieldDescriptor.Comment,
-                allTables);
+            var fieldTypeDescriptor = availableTypes.GetTypeDescriptor(fieldDescriptor.TypeName);
+            var property = CreateProperty(fieldTypeDescriptor.RealTypeName, fieldDescriptor.FieldName, fieldDescriptor.Comment);
             
             properties.Add(property);
         }
@@ -230,14 +246,9 @@ public static class CodeGenerator
             ));
     }
 
-    private static PropertyDeclarationSyntax CreateProperty(string type, string name, string comment,
-        List<TableData> allTables)
+    private static PropertyDeclarationSyntax CreateProperty(string type, string name, string comment)
     {
-        var propertyTypeName = allTables.Exists(data => data.Name == type)
-            ? $"{type}.Item"
-            : type;
-
-        var property = SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName(propertyTypeName), name)
+        var property = SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName(type), name)
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
             .WithAccessorList(SyntaxFactory.AccessorList(
                 SyntaxFactory.List(new[]

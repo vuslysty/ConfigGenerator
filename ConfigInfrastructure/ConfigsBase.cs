@@ -10,7 +10,8 @@ public abstract class ConfigsBase
     {
         private readonly IDatabaseConfigTable _databaseConfigTable;
     
-        public DatabaseTypeDescriptor(IDatabaseConfigTable databaseConfigTable, string tableName) : base(tableName)
+        public DatabaseTypeDescriptor(IDatabaseConfigTable databaseConfigTable, string tableName) 
+            : base(tableName, $"{tableName}.Item")
         {
             _databaseConfigTable = databaseConfigTable;
         }

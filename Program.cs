@@ -14,7 +14,21 @@ using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using TestNamespace;
 using CodeGenerator = ConfigGenerator.ConfigInfrastructure.CodeGenerator;
-//using Configs = YourNamespace.Configs;
+
+// string projectDirectory = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)
+//     .Parent.Parent.Parent.FullName;
+//
+// string pathToTest = Path.Combine(projectDirectory, "test.txt");
+//
+// using (FileStream stream = new FileStream(pathToTest, FileMode.OpenOrCreate, FileAccess.Write))
+// {
+//     stream.SetLength(0);
+//
+//     using (StreamWriter writer = new StreamWriter(stream, System.Text.Encoding.UTF8, bufferSize: 128 * 1024))
+//     {
+//         writer.Write("Hello World!");
+//     }
+// }
 
 await LoadGoogleCredentials();
 
@@ -79,10 +93,7 @@ async Task LoadGoogleCredentials()
         switch (tableData)
         {
             case DatabaseTableData databaseTableData:
-                if (databaseTableData.IdType == AvailableTypes.String.TypeName)
-                {
-                    availableTypes.Register(new DatabaseTableTypeDescriptor(databaseTableData));
-                }
+                availableTypes.Register(new DatabaseTableTypeDescriptor(databaseTableData));
                 break;
         }
     }

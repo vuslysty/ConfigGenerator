@@ -7,10 +7,18 @@ namespace ConfigGenerator.ConfigInfrastructure;
 public abstract class TypeDescriptor
 {
     public string TypeName { get; }
+    public string RealTypeName { get; }
 
+    protected TypeDescriptor(string typeName, string realTypeName)
+    {
+        TypeName = typeName;
+        RealTypeName = realTypeName;
+    }
+    
     protected TypeDescriptor(string typeName)
     {
         TypeName = typeName;
+        RealTypeName = typeName;
     }
 
     public abstract object? Parse(string value);
@@ -59,6 +67,10 @@ public class IntTypeDescriptor : TypeDescriptor
 public class FloatTypeDescriptor : TypeDescriptor
 {
     public FloatTypeDescriptor() : base("float") { }
+    
+    public FloatTypeDescriptor(string typeName) : base(typeName) { }
+    
+    public FloatTypeDescriptor(string typeName, string realTypeName) : base(typeName, realTypeName) { }
 
     public override object? Parse(string value)
     {
@@ -115,7 +127,8 @@ class DatabaseTableTypeDescriptor : TypeDescriptor
 {
     private DatabaseTableData _tableData;
     
-    public DatabaseTableTypeDescriptor(DatabaseTableData tableData) : base(tableData.Name)
+    public DatabaseTableTypeDescriptor(DatabaseTableData tableData) 
+        : base(tableData.Name, $"{tableData.Name}.Item")
     {
         _tableData = tableData;
     }
@@ -139,12 +152,85 @@ class DatabaseTableTypeDescriptor : TypeDescriptor
     }
 }
 
+public class SecondsTypeDescriptor : FloatTypeDescriptor
+{
+    public SecondsTypeDescriptor() : base("seconds", nameof(TimeSpan)) { }
+
+    public override object? Parse(string value)
+    {
+        var parsedValue = base.Parse(value);
+
+        if (parsedValue == null)
+        {
+            return null;
+        }
+
+        return TimeSpan.FromSeconds((float)parsedValue);
+    }
+}
+
+public class MinutesTypeDescriptor : FloatTypeDescriptor
+{
+    public MinutesTypeDescriptor() : base("minutes", nameof(TimeSpan)) { }
+
+    public override object? Parse(string value)
+    {
+        var parsedValue = base.Parse(value);
+
+        if (parsedValue == null)
+        {
+            return null;
+        }
+
+        return TimeSpan.FromMinutes((float)parsedValue);
+    }
+}
+
+public class HoursTypeDescriptor : FloatTypeDescriptor
+{
+    public HoursTypeDescriptor() : base("hours", nameof(TimeSpan)) { }
+
+    public override object? Parse(string value)
+    {
+        var parsedValue = base.Parse(value);
+
+        if (parsedValue == null)
+        {
+            return null;
+        }
+
+        return TimeSpan.FromHours((float)parsedValue);
+    }
+}
+
+public class DaysTypeDescriptor : FloatTypeDescriptor
+{
+    public DaysTypeDescriptor() : base("days", nameof(TimeSpan)) { }
+
+    public override object? Parse(string value)
+    {
+        var parsedValue = base.Parse(value);
+
+        if (parsedValue == null)
+        {
+            return null;
+        }
+
+        return TimeSpan.FromDays((float)parsedValue);
+    }
+}
+
 public class AvailableTypes
 {
     public static readonly IntTypeDescriptor Int = new();
     public static readonly FloatTypeDescriptor Float = new();
     public static readonly StringTypeDescriptor String = new();
     public static readonly BoolTypeDescriptor Bool = new();
+    
+    public static readonly SecondsTypeDescriptor Seconds = new();
+    public static readonly MinutesTypeDescriptor Minutes = new();
+    public static readonly HoursTypeDescriptor Hours = new();
+    public static readonly DaysTypeDescriptor Days = new();
     
     private readonly List<TypeDescriptor> _types = new();
 
@@ -166,6 +252,10 @@ public class AvailableTypes
         Register(Float);
         Register(String);
         Register(Bool);
+        Register(Seconds);
+        Register(Minutes);
+        Register(Hours);
+        Register(Days);
     }
 
     public TypeDescriptor? GetTypeDescriptor(string typeName) =>
