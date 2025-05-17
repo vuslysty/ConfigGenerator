@@ -8,11 +8,14 @@ using System.IO;
 using System.Threading.Tasks;
 using ConfigGenerator;
 using ConfigGenerator.ConfigInfrastructure;
+using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
+using ConfigGenerator.Spreadsheet;
 using Google.Apis.Auth.OAuth2;
 using Google.Apis.Services;
 using Google.Apis.Sheets.v4;
 using Google.Apis.Sheets.v4.Data;
 using TestNamespace;
+//using TestNamespace;
 using CodeGenerator = ConfigGenerator.ConfigInfrastructure.CodeGenerator;
 
 // string projectDirectory = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)
@@ -30,56 +33,24 @@ using CodeGenerator = ConfigGenerator.ConfigInfrastructure.CodeGenerator;
 //     }
 // }
 
-await LoadGoogleCredentials();
+await LoadConfigs();
 
-async Task LoadGoogleCredentials()
+async Task LoadConfigs()
 {
-    string[] Scopes = { SheetsService.Scope.SpreadsheetsReadonly };
-    string ApplicationName = "Google Sheets API Example";
     string spreadsheetId = "1JphtDv8GUoyqib2y1r_FkiF6JdlrCRg_GIxpWv7v-aQ";
     string credentialsFile = "credentials.json";
 
-    // Завантажуємо облікові дані
-    GoogleCredential credential;
-    using (var stream = new FileStream(credentialsFile, FileMode.Open, FileAccess.Read))
-    {
-        credential = GoogleCredential.FromStream(stream).CreateScoped(Scopes);
-    }
-
-    // Створюємо службу Google Sheets
-    var service = new SheetsService(new BaseClientService.Initializer()
-    {
-        HttpClientInitializer = credential,
-        ApplicationName = ApplicationName,
-    });
-
-    // Отримуємо метадані таблиці
-    var spreadsheetRequest = service.Spreadsheets.Get(spreadsheetId);
-    Spreadsheet spreadsheet = await spreadsheetRequest.ExecuteAsync();
-
-    // Формуємо діапазони для всіх листів
-    List<string> ranges = new List<string>();
-    foreach (var sheet in spreadsheet.Sheets)
-    {
-        string sheetName = sheet.Properties.Title;
-        ranges.Add(sheetName); // Додаємо діапазон для кожного листа
-    }
-
-    // Використовуємо batchGet для отримання даних з усіх листів
-    var batchGetRequest = service.Spreadsheets.Values.BatchGet(spreadsheetId);
-    batchGetRequest.Ranges = ranges;
-    BatchGetValuesResponse response = await batchGetRequest.ExecuteAsync();
-
+    ISpreadsheetDataSource spreadsheetDataSource = new GoogleSheetDataSource(credentialsFile, spreadsheetId);
+    List<SpreadsheetPageData> pages = await spreadsheetDataSource.GetAllSheetsDataAsync();
+    
     CultureInfo.CurrentCulture = new CultureInfo("en-US");
     
     var allTables = new List<TableData>();
     
     // Обробка отриманих даних
-    foreach (var valueRange in response.ValueRanges)
+    foreach (var page in pages)
     {
-        var tableName = valueRange.Range.Split('!')[0];
-        
-        if (TableDataUtilities.ExtractTablesFromPage(tableName, valueRange.Values, out List<TableData> resultTables))
+        if (TableDataUtilities.ExtractTablesFromPage(page.name, page.values, out List<TableData> resultTables))
         {
             allTables.AddRange(resultTables);
         }
@@ -105,6 +76,8 @@ async Task LoadGoogleCredentials()
 
     string json = TableDataSerializer.Serialize(allTables);
     List<TableData> deserializeObject = TableDataSerializer.Deserialize(json);
+    
+    MyConfig.Init(deserializeObject);
     
     var code = CodeGenerator.GenerateConfigClasses(allTables, "MyConfig","TestNamespace");
     

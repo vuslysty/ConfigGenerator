@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 using Humanizer;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -279,6 +280,7 @@ public static class CodeGenerator
         var triviaList = lines
             .SelectMany(line => new[] { 
                 SyntaxFactory.Comment(line) })
+            .Prepend(SyntaxFactory.DisabledText("\n"))
             .ToArray();
 
         return SyntaxFactory.TriviaList(triviaList);

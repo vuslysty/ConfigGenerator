@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 
 namespace ConfigGenerator.ConfigInfrastructure;
 
@@ -11,7 +12,7 @@ public abstract class ConfigsBase
         private readonly IDatabaseConfigTable _databaseConfigTable;
     
         public DatabaseTypeDescriptor(IDatabaseConfigTable databaseConfigTable, string tableName) 
-            : base(tableName, $"{tableName}.Item")
+            : base(tableName, $"{tableName}.Item", TypeKind.Reference)
         {
             _databaseConfigTable = databaseConfigTable;
         }

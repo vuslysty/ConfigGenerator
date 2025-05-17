@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 
 namespace ConfigGenerator.ConfigInfrastructure;
 
@@ -117,9 +118,16 @@ public abstract class DatabaseConfigTable<TItem, TId> : IDatabaseConfigTable
                 }
 
                 string strValueData = lineData.Values[fieldIndex];
-                var parsedValue = availableTypes.ParseValue(fieldDescriptor.TypeName, strValueData);
+                TypeDescriptor? typeDescriptor = availableTypes.GetTypeDescriptor(fieldDescriptor.TypeName);
+                
+                if (typeDescriptor == null)
+                {
+                    throw new Exception($"Type is not valid: {fieldDescriptor.TypeName}");
+                }
+                
+                var parsedValue = typeDescriptor.Parse(strValueData);
 
-                if (parsedValue == null)
+                if (parsedValue == null && typeDescriptor.TypeKind != TypeKind.Reference)
                 {
                     throw new Exception($"Cannot parse value \"{strValueData}\" of type: {fieldDescriptor.TypeName}");
                 }
@@ -166,9 +174,16 @@ public abstract class DatabaseConfigTable<TItem, TId> : IDatabaseConfigTable
             {
                 var lineData = databaseTableData.ValueLines[lineIndex];
                 string valueStr = lineData.Values[fieldIndex];
-                var parsedValue = availableTypes.ParseValue(fieldDescriptor.TypeName, valueStr);
-
-                if (parsedValue == null)
+                TypeDescriptor? typeDescriptor = availableTypes.GetTypeDescriptor(fieldDescriptor.TypeName);
+                
+                if (typeDescriptor == null)
+                {
+                    throw new Exception($"Type is not valid: {fieldDescriptor.TypeName}");
+                }
+                
+                var parsedValue = typeDescriptor.Parse(valueStr);
+                
+                if (parsedValue == null && typeDescriptor.TypeKind != TypeKind.Reference)
                 {
                     throw new Exception($"Cannot parse value \"{valueStr}\" of type: {fieldDescriptor.TypeName}");
                 }

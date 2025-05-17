@@ -1,5 +1,6 @@
 using System;
 using System.Reflection;
+using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 
 namespace ConfigGenerator.ConfigInfrastructure;
 
@@ -37,15 +38,22 @@ public class ValueConfigTable : IConfigTable
                 case InitType.Post when !isTableType:
                     continue;
             }
-            
-            var parsedObject = availableTypes.ParseValue(dataValue.Type, dataValue.Value);
 
-            if (parsedObject == null)
+            TypeDescriptor? typeDescriptor = availableTypes.GetTypeDescriptor(dataValue.Type);
+                
+            if (typeDescriptor == null)
+            {
+                throw new Exception($"Type is not valid: {dataValue.Type}");
+            }
+            
+            var parsedValue = typeDescriptor.Parse(dataValue.Value);
+
+            if (parsedValue == null && typeDescriptor.TypeKind != TypeKind.Reference)
             {
                 throw new Exception($"Cannot parse value \"{dataValue.Value}\" of type: {dataValue.Type}");
             }
             
-            property.SetValue(this, parsedObject);
+            property.SetValue(this, parsedValue);
         }
     }
     

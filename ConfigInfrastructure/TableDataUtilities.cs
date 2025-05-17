@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 using Humanizer;
 
 namespace ConfigGenerator.ConfigInfrastructure
@@ -139,7 +140,7 @@ namespace ConfigGenerator.ConfigInfrastructure
 
                         var parsedValue = typeDescriptor.Parse(dataValue.Value);
 
-                        if (parsedValue == null)
+                        if (parsedValue == null && typeDescriptor.TypeKind != TypeKind.Reference)
                         {
                             isValid = false;
                             Console.WriteLine($"Error: used invalid data value \"{dataValue.Value}\", " +
@@ -203,7 +204,7 @@ namespace ConfigGenerator.ConfigInfrastructure
                             var valueStr = valuesLine.Values[fieldIndex];
                             var parsedValue = typeDescriptor.Parse(valueStr);
                             
-                            if (parsedValue == null)
+                            if (parsedValue == null && typeDescriptor.TypeKind != TypeKind.Reference)
                             {
                                 Console.WriteLine($"Error: used invalid data value \"{valueStr}\", " +
                                                   $"for type \"{fieldDescriptor.TypeName}\". " +
