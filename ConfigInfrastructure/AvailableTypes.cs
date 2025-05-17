@@ -46,9 +46,17 @@ public class AvailableTypes
     public TypeDescriptor? GetTypeDescriptor(string typeName) =>
         _types.FirstOrDefault(t => t.TypeName == typeName);
 
-    public object? ParseValue(string typeName, string value)
+    public bool ParseValue(string typeName, string value, out object? result)
     {
-        var type = GetTypeDescriptor(typeName);
-        return type?.Parse(value);
+        result = null;
+        
+        var typeDescriptor = GetTypeDescriptor(typeName);
+
+        if (typeDescriptor == null)
+        {
+            return false;
+        }
+        
+        return typeDescriptor.Parse(value, out result);
     }
 }

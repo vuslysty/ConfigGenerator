@@ -10,21 +10,27 @@ public class FloatTypeDescriptor : TypeDescriptor
     
     public FloatTypeDescriptor(string typeName, string realTypeName) : base(typeName, realTypeName) { }
 
-    public override object? Parse(string value)
+    public override bool Parse(string value, out object? result)
     {
-        float result = 0;
+        result = 0f;
         
         if (string.IsNullOrWhiteSpace(value))
         {
-            return result;
+            return true;
         }
 
         if (value.Contains(','))
         {
             Console.WriteLine("Error: used ',' instead of '.' for floating-point types. Only dot are supported.");
-            return null;
+            return false;
+        }
+
+        if (float.TryParse(value, out var res))
+        {
+            result = res;
+            return true;
         }
         
-        return float.TryParse(value, out result) ? result : null;
+        return false;
     }
 }

@@ -5,26 +5,29 @@ class DatabaseTableTypeDescriptor : TypeDescriptor
     private readonly DatabaseTableData _tableData;
     
     public DatabaseTableTypeDescriptor(DatabaseTableData tableData) 
-        : base(tableData.Name, $"{tableData.Name}.Item", TypeKind.Reference)
+        : base(tableData.Name, $"{tableData.Name}.Item")
     {
         _tableData = tableData;
     }
     
-    public override object? Parse(string value)
+    public override bool Parse(string value, out object? result)
     {
+        result = null;
+        
         if (string.IsNullOrWhiteSpace(value))
         {
-            return string.Empty;
+            return true;
         }
         
-        foreach (DatabaseTableValuesLineData valueData in _tableData.ValueLines)
+        foreach (DatabaseTableValuesLineData? valueData in _tableData.ValueLines)
         {
             if (value == valueData.Id)
             {
-                return valueData;
+                result = valueData;
+                return true;
             }
         }
         
-        return null;
+        return false;
     }
 }

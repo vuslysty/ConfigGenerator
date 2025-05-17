@@ -1,20 +1,12 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using System;
-using System.CodeDom;
-using System.CodeDom.Compiler;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
-using ConfigGenerator;
 using ConfigGenerator.ConfigInfrastructure;
 using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 using ConfigGenerator.Spreadsheet;
-using Google.Apis.Auth.OAuth2;
-using Google.Apis.Services;
-using Google.Apis.Sheets.v4;
-using Google.Apis.Sheets.v4.Data;
-using TestNamespace;
 //using TestNamespace;
 using CodeGenerator = ConfigGenerator.ConfigInfrastructure.CodeGenerator;
 
@@ -69,15 +61,25 @@ async Task LoadConfigs()
         }
     }
 
+    bool hasAnyInvalid = false;
+    
     foreach (var tableData in allTables)
     {
-        TableDataUtilities.ValidateTableTypesAndValues(tableData, availableTypes);
+        bool isValid = TableDataUtilities.ValidateTableTypesAndValues(tableData, availableTypes);
+        
+        if (!isValid)
+        {
+            hasAnyInvalid = true;
+        }
     }
+    
+    if (hasAnyInvalid)
+        return;
 
     string json = TableDataSerializer.Serialize(allTables);
     List<TableData> deserializeObject = TableDataSerializer.Deserialize(json);
     
-    MyConfig.Init(deserializeObject);
+    //MyConfig.Init(deserializeObject);
     
     var code = CodeGenerator.GenerateConfigClasses(allTables, "MyConfig","TestNamespace");
     

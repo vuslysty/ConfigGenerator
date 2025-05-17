@@ -4,15 +4,21 @@ public class  BoolTypeDescriptor : TypeDescriptor
 {
     public BoolTypeDescriptor() : base("bool") { }
 
-    public override object? Parse(string value)
+    public override bool Parse(string value, out object? result)
     {
-        bool result = false;
+        result = false;
         
         if (string.IsNullOrWhiteSpace(value))
         {
-            return result;
+            return true;
         }
-        
-        return bool.TryParse(value, out result) ? result : null;
+
+        if (bool.TryParse(value, out var res))
+        {
+            result = res;
+            return true;
+        }
+
+        return false;
     }
 }

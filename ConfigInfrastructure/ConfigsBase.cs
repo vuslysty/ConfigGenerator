@@ -12,19 +12,22 @@ public abstract class ConfigsBase
         private readonly IDatabaseConfigTable _databaseConfigTable;
     
         public DatabaseTypeDescriptor(IDatabaseConfigTable databaseConfigTable, string tableName) 
-            : base(tableName, $"{tableName}.Item", TypeKind.Reference)
+            : base(tableName, $"{tableName}.Item")
         {
             _databaseConfigTable = databaseConfigTable;
         }
 
-        public override object? Parse(string value)
+        public override bool Parse(string value, out object? result)
         {
+            result = null;
+            
             if (_databaseConfigTable.TryGetItemWithId(value, out var item))
             {
-                return item;
+                result = item;
+                return true;
             }
 
-            return null;
+            return false;
         }
     }
     

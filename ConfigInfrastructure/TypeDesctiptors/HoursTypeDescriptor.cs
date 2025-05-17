@@ -6,15 +6,16 @@ public class HoursTypeDescriptor : FloatTypeDescriptor
 {
     public HoursTypeDescriptor() : base("hours", nameof(TimeSpan)) { }
 
-    public override object? Parse(string value)
+    public override bool Parse(string value, out object? result)
     {
-        var parsedValue = base.Parse(value);
-
-        if (parsedValue == null)
+        result = null;
+        
+        if (base.Parse(value, out var parsedFloat))
         {
-            return TimeSpan.Zero;
+            result = TimeSpan.FromHours((float)parsedFloat);
+            return true;       
         }
 
-        return TimeSpan.FromHours((float)parsedValue);
+        return false;
     }
 }

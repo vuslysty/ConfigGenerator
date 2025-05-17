@@ -84,10 +84,8 @@ public abstract class DatabaseConfigTable<TItem, TId> : IDatabaseConfigTable
             {
                 throw new Exception($"Not found Id property in type {itemType}");
             }
-
-            var idValue = availableTypes.ParseValue(databaseTableData.IdType, lineData.Id);
-
-            if (idValue == null)
+            
+            if (!availableTypes.ParseValue(databaseTableData.IdType, lineData.Id, out var idValue))
             {
                 throw new Exception($"Cannot parse id value \"{lineData.Id}\" of type: {databaseTableData.IdType}");
             }
@@ -118,16 +116,8 @@ public abstract class DatabaseConfigTable<TItem, TId> : IDatabaseConfigTable
                 }
 
                 string strValueData = lineData.Values[fieldIndex];
-                TypeDescriptor? typeDescriptor = availableTypes.GetTypeDescriptor(fieldDescriptor.TypeName);
                 
-                if (typeDescriptor == null)
-                {
-                    throw new Exception($"Type is not valid: {fieldDescriptor.TypeName}");
-                }
-                
-                var parsedValue = typeDescriptor.Parse(strValueData);
-
-                if (parsedValue == null && typeDescriptor.TypeKind != TypeKind.Reference)
+                if (!availableTypes.ParseValue(fieldDescriptor.TypeName, strValueData, out var parsedValue))
                 {
                     throw new Exception($"Cannot parse value \"{strValueData}\" of type: {fieldDescriptor.TypeName}");
                 }
@@ -174,16 +164,8 @@ public abstract class DatabaseConfigTable<TItem, TId> : IDatabaseConfigTable
             {
                 var lineData = databaseTableData.ValueLines[lineIndex];
                 string valueStr = lineData.Values[fieldIndex];
-                TypeDescriptor? typeDescriptor = availableTypes.GetTypeDescriptor(fieldDescriptor.TypeName);
-                
-                if (typeDescriptor == null)
-                {
-                    throw new Exception($"Type is not valid: {fieldDescriptor.TypeName}");
-                }
-                
-                var parsedValue = typeDescriptor.Parse(valueStr);
-                
-                if (parsedValue == null && typeDescriptor.TypeKind != TypeKind.Reference)
+
+                if (!availableTypes.ParseValue(fieldDescriptor.TypeName, valueStr, out var parsedValue))
                 {
                     throw new Exception($"Cannot parse value \"{valueStr}\" of type: {fieldDescriptor.TypeName}");
                 }

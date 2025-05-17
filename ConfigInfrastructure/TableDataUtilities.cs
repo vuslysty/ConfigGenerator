@@ -65,7 +65,7 @@ namespace ConfigGenerator.ConfigInfrastructure
     {
         public string IdType;
         public List<DatabaseTableFieldDescriptorItem> FieldDescriptors = new();
-        public List<DatabaseTableValuesLineData> ValueLines = new();
+        public List<DatabaseTableValuesLineData?> ValueLines = new();
     }
 
     public static class TableDataUtilities
@@ -138,9 +138,7 @@ namespace ConfigGenerator.ConfigInfrastructure
                             continue;
                         }
 
-                        var parsedValue = typeDescriptor.Parse(dataValue.Value);
-
-                        if (parsedValue == null && typeDescriptor.TypeKind != TypeKind.Reference)
+                        if (!typeDescriptor.Parse(dataValue.Value, out var parsedValue))
                         {
                             isValid = false;
                             Console.WriteLine($"Error: used invalid data value \"{dataValue.Value}\", " +
@@ -171,10 +169,9 @@ namespace ConfigGenerator.ConfigInfrastructure
                         // Validate id values
                         foreach (var lineData in databaseTableData.ValueLines)
                         {
-                            var parsedValue = idTypeDescriptor.Parse(lineData.Id);
-
-                            if (parsedValue == null)
+                            if (!idTypeDescriptor.Parse(lineData.Id, out var parsedValue))
                             {
+                                isValid = false;
                                 Console.WriteLine($"Error: used invalid data value \"{lineData.Id}\", " +
                                                   $"for type: \"{idTypeDescriptor.TypeName}\". " +
                                                   $"Table: {databaseTableData.Name}, " +
@@ -202,10 +199,10 @@ namespace ConfigGenerator.ConfigInfrastructure
                         foreach (var valuesLine in databaseTableData.ValueLines)
                         {
                             var valueStr = valuesLine.Values[fieldIndex];
-                            var parsedValue = typeDescriptor.Parse(valueStr);
-                            
-                            if (parsedValue == null && typeDescriptor.TypeKind != TypeKind.Reference)
+
+                            if (!typeDescriptor.Parse(valueStr, out var parsedValue))
                             {
+                                isValid = false;
                                 Console.WriteLine($"Error: used invalid data value \"{valueStr}\", " +
                                                   $"for type \"{fieldDescriptor.TypeName}\". " +
                                                   $"Table: {databaseTableData.Name}, " +
@@ -462,7 +459,7 @@ namespace ConfigGenerator.ConfigInfrastructure
                     continue;
                 }
 
-                DatabaseTableValuesLineData lineData = new DatabaseTableValuesLineData()
+                DatabaseTableValuesLineData? lineData = new DatabaseTableValuesLineData()
                 {
                     Id = id,
                     Row = checkDataRow,
@@ -523,10 +520,8 @@ namespace ConfigGenerator.ConfigInfrastructure
                         intId = validId + 1;
                         continue;
                     }
-
-                    var parsedId = AvailableTypes.Int.Parse(lineData.Id);
-
-                    if (parsedId != null)
+                    
+                    if (AvailableTypes.Int.Parse(lineData.Id, out var parsedId))
                     {
                         int id = (int)parsedId;
 

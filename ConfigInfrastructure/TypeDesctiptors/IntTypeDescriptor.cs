@@ -6,16 +6,22 @@ public class IntTypeDescriptor : TypeDescriptor
 {
     public IntTypeDescriptor() : base("int") {}
 
-    public override object? Parse(string value)
+    public override bool Parse(string value, out object? result)
     {
-        int result = 0;
+        result = 0;
         
         if (string.IsNullOrWhiteSpace(value))
         {
-            return result;
+            return true;
         }
-        
-        return TryParseInt(value, out result) ? result : null;
+
+        if (TryParseInt(value, out var res))
+        {
+            result = res;
+            return true;
+        }
+
+        return false;
     }
     
     private bool TryParseInt(string value, out int result)

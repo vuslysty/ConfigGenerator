@@ -45,10 +45,8 @@ public class ValueConfigTable : IConfigTable
             {
                 throw new Exception($"Type is not valid: {dataValue.Type}");
             }
-            
-            var parsedValue = typeDescriptor.Parse(dataValue.Value);
 
-            if (parsedValue == null && typeDescriptor.TypeKind != TypeKind.Reference)
+            if (!typeDescriptor.Parse(dataValue.Value, out var parsedValue))
             {
                 throw new Exception($"Cannot parse value \"{dataValue.Value}\" of type: {dataValue.Type}");
             }

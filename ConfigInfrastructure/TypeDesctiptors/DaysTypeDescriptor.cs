@@ -6,15 +6,16 @@ public class DaysTypeDescriptor : FloatTypeDescriptor
 {
     public DaysTypeDescriptor() : base("days", nameof(TimeSpan)) { }
 
-    public override object? Parse(string value)
+    public override bool Parse(string value, out object? result)
     {
-        var parsedValue = base.Parse(value);
-
-        if (parsedValue == null)
+        result = null;
+        
+        if (base.Parse(value, out var parsedFloat))
         {
-            return TimeSpan.Zero;
+            result = TimeSpan.FromDays((float)parsedFloat);
+            return true;       
         }
 
-        return TimeSpan.FromDays((float)parsedValue);
+        return false;
     }
 }

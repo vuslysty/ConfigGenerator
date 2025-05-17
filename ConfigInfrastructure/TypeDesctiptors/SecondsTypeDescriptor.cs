@@ -6,15 +6,16 @@ public class SecondsTypeDescriptor : FloatTypeDescriptor
 {
     public SecondsTypeDescriptor() : base("seconds", nameof(TimeSpan)) { }
 
-    public override object? Parse(string value)
+    public override bool Parse(string value, out object? result)
     {
-        var parsedValue = base.Parse(value);
-
-        if (parsedValue == null)
+        result = null;
+        
+        if (base.Parse(value, out var parsedFloat))
         {
-            return TimeSpan.Zero;
+            result = TimeSpan.FromSeconds((float)parsedFloat);
+            return true;       
         }
 
-        return TimeSpan.FromSeconds((float)parsedValue);
+        return false;
     }
 }
