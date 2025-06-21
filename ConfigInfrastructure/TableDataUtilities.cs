@@ -769,7 +769,7 @@ namespace ConfigGenerator.ConfigInfrastructure
 
         private static bool IsValidTypeName(string value)
         {
-            const string dataTypePattern = @"^([A-Za-z][A-Za-z0-9]*)$";
+            const string dataTypePattern = @"^([A-Za-z][A-Za-z0-9]*)(\[\])?$";
 
             if (value.Equals("id", StringComparison.OrdinalIgnoreCase))
             {

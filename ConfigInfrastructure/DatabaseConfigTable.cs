@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 
 namespace ConfigGenerator.ConfigInfrastructure;
 
@@ -15,6 +14,13 @@ public abstract class DatabaseConfigTable<TItem, TId> : IDatabaseConfigTable
 
     private readonly Dictionary<TId, TItem> _idToItemMap = new();
 
+    public Type Type { get; }
+
+    protected DatabaseConfigTable()
+    {
+        Type = typeof(TItem);
+    }
+    
     public TItem GetItemWithId(TId id)
     {
         if (TryGetItemWithId(id, out TItem item))

@@ -5,7 +5,7 @@ class DatabaseTableTypeDescriptor : TypeDescriptor
     private readonly DatabaseTableData _tableData;
     
     public DatabaseTableTypeDescriptor(DatabaseTableData tableData) 
-        : base(tableData.Name, $"{tableData.Name}.Item")
+        : base(tableData.Name, $"{tableData.Name}.Item", typeof(object))
     {
         _tableData = tableData;
     }

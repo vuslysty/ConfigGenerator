@@ -28,6 +28,10 @@ public class AvailableTypes
         }
         
         _types.Add(type);
+        
+        ArrayTypeDescriptor arrayTypeDescriptor = new ArrayTypeDescriptor(type);
+        _types.Add(arrayTypeDescriptor);
+        
         return true;
     }
 

@@ -4,7 +4,7 @@ namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 
 public class SecondsTypeDescriptor : FloatTypeDescriptor
 {
-    public SecondsTypeDescriptor() : base("seconds", nameof(TimeSpan)) { }
+    public SecondsTypeDescriptor() : base("seconds", nameof(TimeSpan), typeof(TimeSpan)) { }
 
     public override bool Parse(string value, out object? result)
     {

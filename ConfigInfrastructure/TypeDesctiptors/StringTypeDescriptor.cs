@@ -2,7 +2,7 @@ namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 
 public class StringTypeDescriptor : TypeDescriptor
 {
-    public StringTypeDescriptor() : base("string") { }
+    public StringTypeDescriptor() : base("string", typeof(string)) { }
 
     public override bool Parse(string value, out object? result)
     {

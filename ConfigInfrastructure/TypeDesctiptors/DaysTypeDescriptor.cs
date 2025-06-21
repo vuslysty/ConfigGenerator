@@ -4,7 +4,9 @@ namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 
 public class DaysTypeDescriptor : FloatTypeDescriptor
 {
-    public DaysTypeDescriptor() : base("days", nameof(TimeSpan)) { }
+    public DaysTypeDescriptor() : base("days", nameof(TimeSpan), typeof(TimeSpan))
+    {
+    }
 
     public override bool Parse(string value, out object? result)
     {

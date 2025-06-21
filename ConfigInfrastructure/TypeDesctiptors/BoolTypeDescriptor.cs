@@ -2,7 +2,7 @@ namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 
 public class  BoolTypeDescriptor : TypeDescriptor
 {
-    public BoolTypeDescriptor() : base("bool") { }
+    public BoolTypeDescriptor() : base("bool", typeof(bool)) { }
 
     public override bool Parse(string value, out object? result)
     {

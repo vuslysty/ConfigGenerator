@@ -1,3 +1,5 @@
+using System;
+
 namespace ConfigGenerator.ConfigInfrastructure;
 
 public interface IConfigTable
@@ -8,5 +10,6 @@ public interface IConfigTable
 
 public interface IDatabaseConfigTable : IConfigTable
 {
+    Type Type { get; }
     bool TryGetItemWithId(object key, out object value);
 }
