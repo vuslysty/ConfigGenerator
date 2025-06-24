@@ -30,7 +30,7 @@ public class ValueConfigTable : IConfigTable
                 throw new Exception($"Not found property \"{dataValue.Id}\" in type: {currentType}");
             }
 
-            Type tableType = typeof(IConfigTableItem<string>);
+            Type tableType = typeof(IConfigTableItem);
             bool isTableType = tableType.IsAssignableFrom(property.PropertyType)
                                || tableType.MakeArrayType().IsAssignableFrom(property.PropertyType);
             

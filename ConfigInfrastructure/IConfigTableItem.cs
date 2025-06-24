@@ -1,7 +1,12 @@
 namespace ConfigGenerator.ConfigInfrastructure;
 
-public interface IConfigTableItem<T>
+public interface IConfigTableItem
 {
-    int Index { get; }
-    T Id { get; }
+    
+}
+
+public class ConfigTableItem<T> : IConfigTableItem
+{
+    public int Index { get; protected set; }
+    public T Id { get; protected set; }
 }

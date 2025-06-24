@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace ConfigGenerator.ConfigInfrastructure;
 
 public abstract class DatabaseConfigTable<TItem, TId> : IDatabaseConfigTable 
-    where TItem : IConfigTableItem<TId>
+    where TItem : ConfigTableItem<TId>
     where TId : notnull
 {
     public List<TItem> Items { get; } = new();
@@ -113,8 +113,10 @@ public abstract class DatabaseConfigTable<TItem, TId> : IDatabaseConfigTable
                     throw new Exception($"Not found property \"{fieldDescriptor.FieldName}\" in type {itemType}");
                 }
                 
-                bool isTableType = typeof(IConfigTableItem<string>).IsAssignableFrom(property.PropertyType);
-
+                Type tableType = typeof(IConfigTableItem);
+                bool isTableType = tableType.IsAssignableFrom(property.PropertyType)
+                                   || tableType.MakeArrayType().IsAssignableFrom(property.PropertyType);
+                
                 if (isTableType)
                 {
                     // Properties with IConfigTable types we fill on PostInitialize step
@@ -159,7 +161,9 @@ public abstract class DatabaseConfigTable<TItem, TId> : IDatabaseConfigTable
                 throw new Exception($"Not found property \"{fieldDescriptor.FieldName}\" in type {itemType}");
             }
             
-            bool isTableType = typeof(IConfigTableItem<string>).IsAssignableFrom(property.PropertyType);
+            Type tableType = typeof(IConfigTableItem);
+            bool isTableType = tableType.IsAssignableFrom(property.PropertyType)
+                               || tableType.MakeArrayType().IsAssignableFrom(property.PropertyType);
 
             if (!isTableType)
             {

@@ -9,11 +9,13 @@ public abstract class ConfigsBase
 {
     private class DatabaseTypeDescriptor : TypeDescriptor
     {
+        private readonly TypeDescriptor _idTypeDescriptor;
         private readonly IDatabaseConfigTable _databaseConfigTable;
     
-        public DatabaseTypeDescriptor(IDatabaseConfigTable databaseConfigTable, string tableName) 
+        public DatabaseTypeDescriptor(TypeDescriptor idTypeDescriptor, IDatabaseConfigTable databaseConfigTable, string tableName) 
             : base(tableName, $"{tableName}.Item", databaseConfigTable.Type)
         {
+            _idTypeDescriptor = idTypeDescriptor;
             _databaseConfigTable = databaseConfigTable;
         }
 
@@ -25,8 +27,13 @@ public abstract class ConfigsBase
             {
                 return true;
             }
+
+            if (!_idTypeDescriptor.Parse(value, out object? parsedValue))
+            {
+                return false;
+            }
             
-            if (_databaseConfigTable.TryGetItemWithId(value, out var item))
+            if (_databaseConfigTable.TryGetItemWithId(parsedValue!, out var item))
             {
                 result = item;
                 return true;
@@ -71,8 +78,7 @@ public abstract class ConfigsBase
         availableTypes.RegisterDefaultTypes();
         
         Type targetBaseType = typeof(DatabaseConfigTable<,>);
-        Type requiredItemType = typeof(IConfigTableItem<string>);
-        Type requiredIdType = typeof(string);
+        Type requiredItemType = typeof(IConfigTableItem);
         
         Type currentType = GetType();
         
@@ -99,11 +105,23 @@ public abstract class ConfigsBase
             if (!requiredItemType.IsAssignableFrom(genericArguments[0]))
                 continue;
             
-            if (genericArguments[1] != requiredIdType)
-                continue;
-            
+            Type idType = genericArguments[1];
             var configTableInstance = (IDatabaseConfigTable)fieldInfo.GetValue(this);
-            var descriptor = new DatabaseTypeDescriptor(configTableInstance, fieldInfo.FieldType.Name);
+
+            DatabaseTypeDescriptor descriptor = null;
+            
+            if (idType == typeof(int))
+            {
+                descriptor = new DatabaseTypeDescriptor(AvailableTypes.Int, configTableInstance, fieldInfo.FieldType.Name);
+            }
+            else if (idType == typeof(string))
+            {
+                descriptor = new DatabaseTypeDescriptor(AvailableTypes.String, configTableInstance, fieldInfo.FieldType.Name);
+            }
+            else
+            {
+                throw new Exception($"Unknown ID type: {idType}");
+            }
             
             availableTypes.Register(descriptor);
         }

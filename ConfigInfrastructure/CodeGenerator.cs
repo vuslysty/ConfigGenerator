@@ -81,10 +81,7 @@ public static class CodeGenerator
         var itemClass = SyntaxFactory.ClassDeclaration("Item")
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
             .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName(
-                $"IConfigTableItem<{databaseTableData.IdType}>")))
-            .AddMembers(
-                CreateProperty(idTypeDescriptor.RealTypeName, "Id", null),
-                CreateProperty(AvailableTypes.Int.RealTypeName, "Index", null)
+                $"ConfigTableItem<{databaseTableData.IdType}>"))
             );
         
         var properties = new List<MemberDeclarationSyntax>();
