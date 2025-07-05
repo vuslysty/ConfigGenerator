@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 
 namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 
@@ -18,14 +19,10 @@ public class FloatTypeDescriptor : TypeDescriptor
         {
             return true;
         }
+        
+        value = value.Replace(',', '.');
 
-        if (value.Contains(','))
-        {
-            Console.WriteLine("Error: used ',' instead of '.' for floating-point types. Only dot are supported.");
-            return false;
-        }
-
-        if (float.TryParse(value, out var res))
+        if (float.TryParse(value, CultureInfo.InvariantCulture, out var res))
         {
             result = res;
             return true;

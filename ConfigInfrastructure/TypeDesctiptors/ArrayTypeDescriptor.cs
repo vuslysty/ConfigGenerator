@@ -1,8 +1,6 @@
 using System;
-using System.Globalization;
-using System.IO;
-using CsvHelper;
-using CsvHelper.Configuration;
+using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 
@@ -33,33 +31,27 @@ public class ArrayTypeDescriptor : TypeDescriptor
 
             return false;
         }
+
+        const string basePattern =  @"""(?<content>(?:\\""|.)*?)""|[^\|,\s]+";
+        const string floatPattern = @"""(?<content>(?:\\""|.)*?)""|[^\|\s]+";
+
+        var pattern = _typeDescriptor is FloatTypeDescriptor 
+            ? floatPattern
+            : basePattern;
         
-        if (_typeDescriptor.TypeName == "string")
-        {
-            CsvConfiguration configuration = new CsvConfiguration(CultureInfo.InvariantCulture)
-            {
-                TrimOptions = TrimOptions.Trim
-            };
-            
-            using var reader = new StringReader(value);
-            using var csv = new CsvReader(reader, configuration);
-
-            if (csv.Read())
-            {
-                arrayResult = csv.Parser.Record;
-                return true;
-            }
-
-            return false;
-        }
-
-        string[] values = value.Split(',');
+        var matches = Regex.Matches(value, pattern);
+        
+        var values = matches
+            .Select(m => m.Groups["content"].Success 
+                ? m.Groups["content"].Value  // Якщо знайдено в лапках
+                : m.Value)                   // Інакше — беремо як є
+            .ToList();
 
         Array array;
 
         try
         {
-            array = Array.CreateInstance(_typeDescriptor.Type, values.Length);
+            array = Array.CreateInstance(_typeDescriptor.Type, values.Count);
         }
         catch
         {
@@ -67,7 +59,7 @@ public class ArrayTypeDescriptor : TypeDescriptor
         }
         
         
-        for (var i = 0; i < values.Length; i++)
+        for (var i = 0; i < values.Count; i++)
         {
             var splitValue = values[i];
             string strValue = splitValue.Trim();

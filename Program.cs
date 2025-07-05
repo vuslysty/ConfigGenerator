@@ -29,7 +29,9 @@ using CodeGenerator = ConfigGenerator.ConfigInfrastructure.CodeGenerator;
 string spreadsheetId = "1JphtDv8GUoyqib2y1r_FkiF6JdlrCRg_GIxpWv7v-aQ";
 string credentialsFile = "credentials.json";
 
-ISpreadsheetDataSource spreadsheetDataSource = new GoogleSheetDataSource(credentialsFile, spreadsheetId);
+//ISpreadsheetDataSource spreadsheetDataSource = new GoogleSheetDataSource(credentialsFile, spreadsheetId);
+ISpreadsheetDataSource spreadsheetDataSource = new ExcelFileDataSource("C:/Users/vuslystyi/Downloads/Config.xlsx");
+
 List<SpreadsheetPageData> pages = await spreadsheetDataSource.GetAllSheetsDataAsync();
 
 CultureInfo.CurrentCulture = new CultureInfo("en-US");
