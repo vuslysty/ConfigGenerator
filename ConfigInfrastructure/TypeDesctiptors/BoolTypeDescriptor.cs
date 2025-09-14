@@ -1,24 +1,25 @@
-namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
-
-public class  BoolTypeDescriptor : TypeDescriptor
+namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors
 {
-    public BoolTypeDescriptor() : base("bool", typeof(bool)) { }
-
-    public override bool Parse(string value, out object? result)
+    public class  BoolTypeDescriptor : TypeDescriptor
     {
-        result = false;
+        public BoolTypeDescriptor() : base("bool", typeof(bool)) { }
+
+        public override bool Parse(string value, out object? result)
+        {
+            result = false;
         
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return true;
-        }
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return true;
+            }
 
-        if (bool.TryParse(value, out var res))
-        {
-            result = res;
-            return true;
-        }
+            if (bool.TryParse(value, out var res))
+            {
+                result = res;
+                return true;
+            }
 
-        return false;
+            return false;
+        }
     }
 }

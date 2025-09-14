@@ -1,26 +1,27 @@
 using System;
 
-namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
-
-public abstract class TypeDescriptor
+namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors
 {
-    public string TypeName { get; }
-    public string RealTypeName { get; }
-    public Type Type { get; }
-
-    protected TypeDescriptor(string typeName, string realTypeName, Type type)
+    public abstract class TypeDescriptor
     {
-        TypeName = typeName;
-        RealTypeName = realTypeName;
-        Type = type;
-    }
+        public string TypeName { get; }
+        public string RealTypeName { get; }
+        public Type Type { get; }
+
+        protected TypeDescriptor(string typeName, string realTypeName, Type type)
+        {
+            TypeName = typeName;
+            RealTypeName = realTypeName;
+            Type = type;
+        }
     
-    protected TypeDescriptor(string typeName, Type type)
-    {
-        TypeName = typeName;
-        RealTypeName = typeName;
-        Type = type;
-    }
+        protected TypeDescriptor(string typeName, Type type)
+        {
+            TypeName = typeName;
+            RealTypeName = typeName;
+            Type = type;
+        }
 
-    public abstract bool Parse(string value, out object? result);
+        public abstract bool Parse(string value, out object? result);
+    }
 }

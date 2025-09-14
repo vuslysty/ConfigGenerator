@@ -1,0 +1,15 @@
+{
+  "name": "com.yourcompany.configgenerator",
+  "version": "1.0.0",
+  "displayName": "Config Generator",
+  "description": "External config generator tool integration",
+  "unity": "2020.3",
+  "keywords": ["config", "generator", "external", "tools"],
+  "author": {
+    "name": "Your Name",
+    "email": "your@email.com",
+    "url": "https://yourwebsite.com"
+  },
+  "dependencies": {},
+  "samples": []
+}

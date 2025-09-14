@@ -1,21 +1,22 @@
 using System;
 
-namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
-
-public class SecondsTypeDescriptor : FloatTypeDescriptor
+namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors
 {
-    public SecondsTypeDescriptor() : base("seconds", nameof(TimeSpan), typeof(TimeSpan)) { }
-
-    public override bool Parse(string value, out object? result)
+    public class SecondsTypeDescriptor : FloatTypeDescriptor
     {
-        result = null;
-        
-        if (base.Parse(value, out var parsedFloat))
-        {
-            result = TimeSpan.FromSeconds((float)parsedFloat);
-            return true;       
-        }
+        public SecondsTypeDescriptor() : base("seconds", nameof(TimeSpan), typeof(TimeSpan)) { }
 
-        return false;
+        public override bool Parse(string value, out object? result)
+        {
+            result = null;
+        
+            if (base.Parse(value, out var parsedFloat))
+            {
+                result = TimeSpan.FromSeconds((float)parsedFloat);
+                return true;       
+            }
+
+            return false;
+        }
     }
 }

@@ -1,12 +1,14 @@
 using System.Collections.Generic;
 using System.Linq;
+using ConfigGenerator.ConfigInfrastructure;
+using ConfigGenerator.ConfigInfrastructure.Data;
 using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 using Humanizer;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace ConfigGenerator.ConfigInfrastructure;
+namespace ConfigGenerator;
 
 public static class CodeGenerator
 {
@@ -48,6 +50,7 @@ public static class CodeGenerator
         var syntaxTree = SyntaxFactory.CompilationUnit()
             .AddUsings(
                 SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("ConfigGenerator.ConfigInfrastructure")),
+                SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("ConfigGenerator.ConfigInfrastructure.Data")),
                 SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System")),
                 SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Collections.Generic")))
             .AddMembers(namespaceDecl);
@@ -147,8 +150,8 @@ public static class CodeGenerator
         
         configClass = configClass.AddMembers(
             GenerateGetConfigsMethod(className),
-            GenerateInitMethod("string", "jsonData", className),
-            GenerateInitMethod("List<TableData>", "tables", className));
+            GenerateInitMethod([("string", "jsonData"), ("ITableDataSerializer", "tableDataSerializer")], className),
+            GenerateInitMethod([("List<TableData>", "tables")], className));
         
         return configClass;
     }
@@ -216,16 +219,26 @@ public static class CodeGenerator
             ));
     }
     
-    public static MethodDeclarationSyntax GenerateInitMethod(string parameterType, string parameterName, string configsClassName)
+    public static MethodDeclarationSyntax GenerateInitMethod(
+        List<(string type, string name)> parameters, string configsClassName)
     {
+        ParameterSyntax[] parameterSyntaxItems = new ParameterSyntax[parameters.Count];
+        SeparatedSyntaxList<ArgumentSyntax> arguments = SyntaxFactory.SeparatedList(parameters.Select(parameter =>
+            SyntaxFactory.Argument(SyntaxFactory.IdentifierName(parameter.name))).ToArray());
+
+        for (int i = 0; i < parameters.Count; i++)
+        {
+            (string type, string name) parameter = parameters[i];
+            
+            parameterSyntaxItems[i] = SyntaxFactory.Parameter(SyntaxFactory.Identifier(parameter.name))
+                .WithType(SyntaxFactory.ParseTypeName(parameter.type));
+        }
+
         return SyntaxFactory.MethodDeclaration(
                 SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)), 
                 "Init")
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword), SyntaxFactory.Token(SyntaxKind.StaticKeyword))
-            .AddParameterListParameters(
-                SyntaxFactory.Parameter(SyntaxFactory.Identifier(parameterName))
-                    .WithType(SyntaxFactory.ParseTypeName(parameterType))
-            )
+            .AddParameterListParameters(parameterSyntaxItems)
             .WithBody(SyntaxFactory.Block(
                 GenerateSingletonInitialization(configsClassName), 
                 SyntaxFactory.ExpressionStatement(
@@ -234,11 +247,7 @@ public static class CodeGenerator
                             SyntaxFactory.IdentifierName("_instance"),
                             SyntaxFactory.IdentifierName("Initialize")
                         ),
-                        SyntaxFactory.ArgumentList(
-                            SyntaxFactory.SingletonSeparatedList(
-                                SyntaxFactory.Argument(SyntaxFactory.IdentifierName(parameterName))
-                            )
-                        )
+                        SyntaxFactory.ArgumentList(arguments)
                     )
                 )
             ));

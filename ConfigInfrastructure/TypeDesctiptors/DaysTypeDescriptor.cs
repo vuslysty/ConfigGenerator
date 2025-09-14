@@ -1,23 +1,24 @@
 using System;
 
-namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
-
-public class DaysTypeDescriptor : FloatTypeDescriptor
+namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors
 {
-    public DaysTypeDescriptor() : base("days", nameof(TimeSpan), typeof(TimeSpan))
+    public class DaysTypeDescriptor : FloatTypeDescriptor
     {
-    }
-
-    public override bool Parse(string value, out object? result)
-    {
-        result = null;
-        
-        if (base.Parse(value, out var parsedFloat))
+        public DaysTypeDescriptor() : base("days", nameof(TimeSpan), typeof(TimeSpan))
         {
-            result = TimeSpan.FromDays((float)parsedFloat);
-            return true;       
         }
 
-        return false;
+        public override bool Parse(string value, out object? result)
+        {
+            result = null;
+        
+            if (base.Parse(value, out var parsedFloat))
+            {
+                result = TimeSpan.FromDays((float)parsedFloat);
+                return true;       
+            }
+
+            return false;
+        }
     }
 }

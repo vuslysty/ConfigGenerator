@@ -2,80 +2,81 @@ using System;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
-
-public class ArrayTypeDescriptor : TypeDescriptor
+namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors
 {
-    private readonly TypeDescriptor _typeDescriptor;
+    public class ArrayTypeDescriptor : TypeDescriptor
+    {
+        private readonly TypeDescriptor _typeDescriptor;
     
-    public ArrayTypeDescriptor(TypeDescriptor typeDescriptor)
-        : base(
-            $"{typeDescriptor.TypeName}[]", 
-            $"{typeDescriptor.RealTypeName}[]",
-            typeDescriptor.Type.MakeArrayType())
-    {
-        _typeDescriptor = typeDescriptor;
-    }
-
-    public override bool Parse(string value, out object? arrayResult)
-    {
-        arrayResult = null;
-
-        if (string.IsNullOrWhiteSpace(value))
+        public ArrayTypeDescriptor(TypeDescriptor typeDescriptor)
+            : base(
+                $"{typeDescriptor.TypeName}[]", 
+                $"{typeDescriptor.RealTypeName}[]",
+                typeDescriptor.Type.MakeArrayType())
         {
-            if (_typeDescriptor.Parse(value, out object? result))
-            {
-                arrayResult = Array.CreateInstance(result.GetType(), 0);
-                return true;
-            }
-
-            return false;
+            _typeDescriptor = typeDescriptor;
         }
 
-        const string basePattern =  @"""(?<content>(?:\\""|.)*?)""|[^\|,\s]+";
-        const string floatPattern = @"""(?<content>(?:\\""|.)*?)""|[^\|\s]+";
-
-        var pattern = _typeDescriptor is FloatTypeDescriptor 
-            ? floatPattern
-            : basePattern;
-        
-        var matches = Regex.Matches(value, pattern);
-        
-        var values = matches
-            .Select(m => m.Groups["content"].Success 
-                ? m.Groups["content"].Value  // Якщо знайдено в лапках
-                : m.Value)                   // Інакше — беремо як є
-            .ToList();
-
-        Array array;
-
-        try
+        public override bool Parse(string value, out object? arrayResult)
         {
-            array = Array.CreateInstance(_typeDescriptor.Type, values.Count);
-        }
-        catch
-        {
-            return false;
-        }
-        
-        
-        for (var i = 0; i < values.Count; i++)
-        {
-            var splitValue = values[i];
-            string strValue = splitValue.Trim();
+            arrayResult = null;
 
-            if (_typeDescriptor.Parse(strValue, out var result))
+            if (string.IsNullOrWhiteSpace(value))
             {
-                array.SetValue(result, i);
-            }
-            else
-            {
-                Console.WriteLine($"Error in parsing of array: {TypeName}. Can't parse value: {strValue}");
+                if (_typeDescriptor.Parse(value, out object? result))
+                {
+                    arrayResult = Array.CreateInstance(result.GetType(), 0);
+                    return true;
+                }
+
                 return false;
             }
-        }
+
+            const string basePattern =  @"""(?<content>(?:\\""|.)*?)""|[^\|,\s]+";
+            const string floatPattern = @"""(?<content>(?:\\""|.)*?)""|[^\|\s]+";
+
+            var pattern = _typeDescriptor is FloatTypeDescriptor 
+                ? floatPattern
+                : basePattern;
         
-        arrayResult = array;
-        return true;
+            var matches = Regex.Matches(value, pattern);
+        
+            var values = matches
+                .Select(m => m.Groups["content"].Success 
+                    ? m.Groups["content"].Value  // Якщо знайдено в лапках
+                    : m.Value)                   // Інакше — беремо як є
+                .ToList();
+
+            Array array;
+
+            try
+            {
+                array = Array.CreateInstance(_typeDescriptor.Type, values.Count);
+            }
+            catch
+            {
+                return false;
+            }
+        
+        
+            for (var i = 0; i < values.Count; i++)
+            {
+                var splitValue = values[i];
+                string strValue = splitValue.Trim();
+
+                if (_typeDescriptor.Parse(strValue, out var result))
+                {
+                    array.SetValue(result, i);
+                }
+                else
+                {
+                    Console.WriteLine($"Error in parsing of array: {TypeName}. Can't parse value: {strValue}");
+                    return false;
+                }
+            }
+        
+            arrayResult = array;
+            return true;
+        }
     }
 }

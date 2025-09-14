@@ -1,20 +1,21 @@
-namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
-
-public class StringTypeDescriptor : TypeDescriptor
+namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors
 {
-    public StringTypeDescriptor() : base("string", typeof(string)) { }
-
-    public override bool Parse(string value, out object? result)
+    public class StringTypeDescriptor : TypeDescriptor
     {
-        if (string.IsNullOrWhiteSpace(value))
+        public StringTypeDescriptor() : base("string", typeof(string)) { }
+
+        public override bool Parse(string value, out object? result)
         {
-            result = string.Empty;
-        }
-        else
-        {
-            result = value;
-        }
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                result = string.Empty;
+            }
+            else
+            {
+                result = value;
+            }
         
-        return true;
+            return true;
+        }
     }
 }

@@ -3,70 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.RegularExpressions;
+using ConfigGenerator.ConfigInfrastructure;
+using ConfigGenerator.ConfigInfrastructure.Data;
 using Humanizer;
 
-namespace ConfigGenerator.ConfigInfrastructure
+namespace ConfigGenerator
 {
-    [Serializable]
-    public class TableData
-    {
-        public string Name;
-        
-        [NonSerialized]
-        public int StartRow;
-        [NonSerialized]
-        public int StartCol;
-        
-        [NonSerialized]
-        public int EndRow;
-        [NonSerialized]
-        public int EndCol;
-    }
-
-    [Serializable]
-    public class ValueTableDataItem
-    {
-        [NonSerialized]
-        public int Row;
-        public string Id;
-        public string Type;
-        public string Value;
-        public string Comment;
-    }
-    
-    [Serializable]
-    public class ValueTableData : TableData
-    {
-        public List<ValueTableDataItem> DataValues = new();
-    }
-
-    [Serializable]
-    public class DatabaseTableFieldDescriptorItem
-    {
-        [NonSerialized]
-        public int Col;
-        public string FieldName;
-        public string TypeName;
-        public string Comment;
-    }
-    
-    [Serializable]
-    public class DatabaseTableValuesLineData
-    {
-        [NonSerialized]
-        public int Row;
-        public string Id;
-        public List<string> Values = new();
-    }
-    
-    [Serializable]
-    public class DatabaseTableData : TableData
-    {
-        public string IdType;
-        public List<DatabaseTableFieldDescriptorItem> FieldDescriptors = new();
-        public List<DatabaseTableValuesLineData?> ValueLines = new();
-    }
-
     public static class TableDataUtilities
     {
         private const string TableStartPattern = @"^#([A-Za-z][A-Za-z0-9 ]*)$";
@@ -87,12 +29,12 @@ namespace ConfigGenerator.ConfigInfrastructure
                 if (GetCellData(pageData, startRow, startCol + 1) == "type" &&
                     GetCellData(pageData, startRow, startCol + 2) == "value")
                 {
-                    TableData valueTableData = GetValueTableData(startRow, startCol, tableName, pageData);
+                    ValueTableData valueTableData = GetValueTableData(startRow, startCol, tableName, pageData);
                     tableDataList.Add(valueTableData);
                 }
                 else
                 {
-                    TableData databaseTableData = GetDatabaseTableData(startRow, startCol, tableName, pageData);
+                    DatabaseTableData databaseTableData = GetDatabaseTableData(startRow, startCol, tableName, pageData);
                     tableDataList.Add(databaseTableData);
                 }
             }
@@ -308,7 +250,7 @@ namespace ConfigGenerator.ConfigInfrastructure
             return null;
         }
 
-        private static TableData GetValueTableData(int startRow, int startCol, string name,
+        private static ValueTableData GetValueTableData(int startRow, int startCol, string name,
             IList<IList<object>> pageData)
         {
             ValueTableData valueTableData = new ValueTableData()
@@ -378,7 +320,7 @@ namespace ConfigGenerator.ConfigInfrastructure
             return valueTableData;
         }
 
-        private static TableData GetDatabaseTableData(int startRow, int startCol, string name,
+        private static DatabaseTableData GetDatabaseTableData(int startRow, int startCol, string name,
             IList<IList<object>> pageData)
         {
             DatabaseTableData databaseTableData = new DatabaseTableData

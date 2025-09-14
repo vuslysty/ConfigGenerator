@@ -1,24 +1,25 @@
-namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
-
-public class IntTypeDescriptor : TypeDescriptor
+namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors
 {
-    public IntTypeDescriptor() : base("int", typeof(int)) { }
-
-    public override bool Parse(string value, out object? result)
+    public class IntTypeDescriptor : TypeDescriptor
     {
-        result = 0;
+        public IntTypeDescriptor() : base("int", typeof(int)) { }
+
+        public override bool Parse(string value, out object? result)
+        {
+            result = 0;
         
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return true;
-        }
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return true;
+            }
 
-        if (ParseUtils.TryParseInt(value, out var res))
-        {
-            result = res;
-            return true;
-        }
+            if (ParseUtils.TryParseInt(value, out var res))
+            {
+                result = res;
+                return true;
+            }
 
-        return false;
+            return false;
+        }
     }
 }

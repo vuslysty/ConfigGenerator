@@ -1,33 +1,36 @@
-namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
+using ConfigGenerator.ConfigInfrastructure.Data;
 
-class DatabaseTableTypeDescriptor : TypeDescriptor
+namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors
 {
-    private readonly DatabaseTableData _tableData;
-    
-    public DatabaseTableTypeDescriptor(DatabaseTableData tableData) 
-        : base(tableData.Name, $"{tableData.Name}.Item", typeof(object))
+    class DatabaseTableTypeDescriptor : TypeDescriptor
     {
-        _tableData = tableData;
-    }
+        private readonly DatabaseTableData _tableData;
     
-    public override bool Parse(string value, out object? result)
-    {
-        result = null;
-        
-        if (string.IsNullOrWhiteSpace(value))
+        public DatabaseTableTypeDescriptor(DatabaseTableData tableData) 
+            : base(tableData.Name, $"{tableData.Name}.Item", typeof(object))
         {
-            return true;
+            _tableData = tableData;
         }
-        
-        foreach (DatabaseTableValuesLineData? valueData in _tableData.ValueLines)
+    
+        public override bool Parse(string value, out object? result)
         {
-            if (value == valueData.Id)
+            result = null;
+        
+            if (string.IsNullOrWhiteSpace(value))
             {
-                result = valueData;
                 return true;
             }
-        }
         
-        return false;
+            foreach (DatabaseTableValuesLineData? valueData in _tableData.ValueLines)
+            {
+                if (value == valueData.Id)
+                {
+                    result = valueData;
+                    return true;
+                }
+            }
+        
+            return false;
+        }
     }
 }

@@ -1,33 +1,34 @@
 using System;
 using System.Globalization;
 
-namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
-
-public class FloatTypeDescriptor : TypeDescriptor
+namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors
 {
-    public FloatTypeDescriptor() : base("float", typeof(float)) { }
-    
-    public FloatTypeDescriptor(string typeName, Type type) : base(typeName, type) { }
-    
-    public FloatTypeDescriptor(string typeName, string realTypeName, Type type) : base(typeName, realTypeName, type) { }
-
-    public override bool Parse(string value, out object? result)
+    public class FloatTypeDescriptor : TypeDescriptor
     {
-        result = 0f;
-        
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return true;
-        }
-        
-        value = value.Replace(',', '.');
+        public FloatTypeDescriptor() : base("float", typeof(float)) { }
+    
+        public FloatTypeDescriptor(string typeName, Type type) : base(typeName, type) { }
+    
+        public FloatTypeDescriptor(string typeName, string realTypeName, Type type) : base(typeName, realTypeName, type) { }
 
-        if (float.TryParse(value, CultureInfo.InvariantCulture, out var res))
+        public override bool Parse(string value, out object? result)
         {
-            result = res;
-            return true;
-        }
+            result = 0f;
         
-        return false;
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return true;
+            }
+        
+            value = value.Replace(',', '.');
+            
+            if (float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var res))
+            {
+                result = res;
+                return true;
+            }
+        
+            return false;
+        }
     }
 }
