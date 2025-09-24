@@ -28,10 +28,7 @@ namespace ConfigGenerator.ConfigInfrastructure
             }
         
             _types.Add(type);
-        
-            ArrayTypeDescriptor arrayTypeDescriptor = new ArrayTypeDescriptor(type);
-            _types.Add(arrayTypeDescriptor);
-        
+            
             return true;
         }
 

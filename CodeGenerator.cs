@@ -70,7 +70,14 @@ public static class CodeGenerator
         foreach (var dataItem in valueTableData.DataValues)
         {
             var typeDescriptor = availableTypes.GetTypeDescriptor(dataItem.Type);
-            var property = CreateProperty(typeDescriptor.RealTypeName, dataItem.Id, dataItem.Comment);
+
+            string typeName = typeDescriptor.RealTypeName;
+
+            if (dataItem.ArrayType.IsArray()) {
+                typeName = $"{typeName}[]";
+            }
+            
+            var property = CreateProperty(typeName, dataItem.Id, dataItem.Comment);
             properties.Add(property);
         }
 

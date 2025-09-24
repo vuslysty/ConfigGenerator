@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Reflection;
 using ConfigGenerator.ConfigInfrastructure.Data;
 using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
@@ -48,12 +49,26 @@ namespace ConfigGenerator.ConfigInfrastructure
                 {
                     throw new Exception($"Type is not valid: {dataValue.Type}");
                 }
-
-                if (!typeDescriptor.Parse(dataValue.Value, out var parsedValue))
+                
+                object? parsedValue;
+                
+                if (dataValue.ArrayType.IsArray())
                 {
-                    throw new Exception($"Cannot parse value \"{dataValue.Value}\" of type: {dataValue.Type}");
+                    if (!typeDescriptor.ParseAsArray(dataValue.Values, out parsedValue))
+                    {
+                        throw new Exception($"Cannot parse array value \"{dataValue.Values}\" of type: {dataValue.Type}");
+                    }
                 }
-            
+                else
+                {
+                    string value = dataValue.Values.Count > 0 ? dataValue.Values.First() : string.Empty;
+                    
+                    if (!typeDescriptor.Parse(value, out parsedValue))
+                    {
+                        throw new Exception($"Cannot parse value \"{value}\" of type: {dataValue.Type}");
+                    }
+                }
+                
                 property.SetValue(this, parsedValue);
             }
         }

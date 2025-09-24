@@ -2,10 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Text;
 using System.Text.RegularExpressions;
 using ConfigGenerator.ConfigInfrastructure;
 using ConfigGenerator.ConfigInfrastructure.Data;
-using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 using Humanizer;
 
 namespace ConfigGenerator
@@ -80,14 +80,46 @@ namespace ConfigGenerator
                             continue;
                         }
 
-                        if (!typeDescriptor.Parse(dataValue.Value, out var parsedValue))
+                        if (dataValue.ArrayType.IsArray())
                         {
-                            isValid = false;
-                            Console.WriteLine($"Error: used invalid data value \"{dataValue.Value}\", " +
-                                              $"for type: \"{dataValue.Type}\". " +
-                                              $"Table: {valueTableData.Name}, " +
-                                              $"Row: {dataValue.Row + 1}, " +
-                                              $"Col: {IndexToColumn(valueTableData.StartCol + 2)}");
+                            for (var i = 0; i < dataValue.Values.Count; i++) {
+                                string value = dataValue.Values[i];
+                                int valueRow = dataValue.Row;
+
+                                switch (dataValue.ArrayType)
+                                {
+                                    case ArrayType.OneCell:
+                                        valueRow = dataValue.ValuesRows.First();
+                                        break;
+                                    
+                                    case ArrayType.Multicell:
+                                        valueRow = dataValue.ValuesRows[i];
+                                        break;
+                                }
+                                
+                                if (!typeDescriptor.Parse(value, out var parsedValue))
+                                {
+                                    isValid = false;
+                                    Console.WriteLine($"Error: used invalid data value \"{value}\", " +
+                                                      $"for type: \"{dataValue.Type}\". " +
+                                                      $"Table: {valueTableData.Name}, " +
+                                                      $"Row: {valueRow + 1}, " +
+                                                      $"Col: {IndexToColumn(valueTableData.StartCol + 2)}");
+                                }
+                            }
+                        } else {
+                            string value = dataValue.Values.Count > 0 ? dataValue.Values.First() : string.Empty;
+                            int valueRow = dataValue.ValuesRows.Count > 0 ? dataValue.ValuesRows.First() : dataValue.Row;
+                            
+                            if (!typeDescriptor.Parse(value, out var parsedValue))
+                            {
+                                isValid = false;
+                                Console.WriteLine($"Error: used invalid data value \"{value}\", " +
+                                                  $"for type: \"{dataValue.Type}\". " +
+                                                  $"Table: {valueTableData.Name}, " +
+                                                  $"Row: {valueRow + 1}, " +
+                                                  $"Col: {IndexToColumn(valueTableData.StartCol + 2)}");
+                            }
                         }
                     }
                     
@@ -276,10 +308,10 @@ namespace ConfigGenerator
             item.Type = GetCellData(pageData, checkRow, typeCol);
             
             string valueData = GetCellData(pageData, checkRow, valueCol);
-            List<string> values = new List<string>();
+            List<(int row, string value)> values = new ();
             
             if (!string.IsNullOrWhiteSpace(valueData)) {
-                values.Add(valueData);
+                values.Add((checkRow, valueData));
             }
             
             string commentData = GetCellData(pageData, checkRow, commentCol);
@@ -307,7 +339,7 @@ namespace ConfigGenerator
                 valueData = GetCellData(pageData, checkRow, valueCol);
 
                 if (!string.IsNullOrWhiteSpace(valueData)) {
-                    values.Add(valueData);
+                    values.Add((checkRow, valueData));
                 }
             
                 commentData = GetCellData(pageData, checkRow, commentCol);
@@ -328,28 +360,165 @@ namespace ConfigGenerator
                 ? AvailableTypes.String.TypeName 
                 : ExtractTypeName(item.Type);
 
-            if (string.IsNullOrWhiteSpace(item.Type)) {
-                item.Type = AvailableTypes.String.TypeName;
-                item.Value = values.Count > 0 ? values[0] : string.Empty;
-                return true;
-            }
+            bool isArray = IsArrayType(item.Type, out string delimiter, out string cleanTypeName);
             
-            if (ArrayTypeDescriptor.IsArrayType(item.Type, out string delimiter, out string cleanTypeName))
-            {
+            if (isArray) {
                 item.Type = cleanTypeName;
 
                 if (delimiter == null) {
-                    item.Value = ArrayTypeDescriptor.ConvertValuesToSerializedString(values);
+                    item.ArrayType = ArrayType.Multicell;
+                    
+                    foreach ((int row, string value) valueTuple in values) {
+                        item.Values.Add(valueTuple.value);
+                        item.ValuesRows.Add(valueTuple.row);
+                    }
                 } else {
-                    item.Value = values.Count > 0
-                        ? ArrayTypeDescriptor.ConvertValuesToSerializedString(values[0], delimiter)
-                        : string.Empty;
+                    item.ArrayType = ArrayType.OneCell;
+                    
+                    if (values.Count > 0) {
+                        (int row, string value) valueTuple = values[0];
+                        string[] tokens = Tokenize(valueTuple.value, delimiter);
+                        item.Values.AddRange(tokens);
+                        item.ValuesRows.Add(valueTuple.row);
+                    }
                 }
             } else {
-                item.Value = values.Count > 0 ? values[0] : string.Empty;
+                item.ArrayType = ArrayType.None;
+                
+                if (values.Count > 0) {
+                    (int row, string value) valueTuple = values[0];
+                    item.Values.Add(valueTuple.value);
+                    item.ValuesRows.Add(valueTuple.row);
+                }
             }
             
             return true;
+        }
+        
+        private static readonly Regex ArrayTypeRegex = new Regex(
+            @"^(.+?)\[(.*)\]$", 
+            RegexOptions.Compiled
+        );
+        
+        public static bool IsArrayType(string typeName, out string specialDelimiter, out string cleanTypeName)
+        {
+            specialDelimiter = null;
+            cleanTypeName = null;
+    
+            if (string.IsNullOrEmpty(typeName)) {
+                return false;
+            }
+
+            Match match = ArrayTypeRegex.Match(typeName);
+    
+            if (!match.Success) {
+                return false;
+            }
+
+            string baseType = match.Groups[1].Value;
+            string bracketContent = match.Groups[2].Value;
+    
+            cleanTypeName = baseType;
+    
+            if (string.IsNullOrEmpty(bracketContent)) {
+                return true;
+            }
+    
+            specialDelimiter = bracketContent;
+            return true;
+        }
+
+        public static string[] Tokenize(string input, string delimiter = null)
+        {
+            if (string.IsNullOrEmpty(input))
+                return Array.Empty<string>();
+
+            if (string.IsNullOrEmpty(delimiter))
+                return new[] { input.Trim() };
+
+            var tokens = new List<string>();
+            int position = 0;
+            bool inQuotes = false;
+            var currentToken = new StringBuilder();
+            string escapedDelimiter = Regex.Escape(delimiter);
+
+            while (position < input.Length)
+            {
+                char currentChar = input[position];
+
+                // Обробка escape-послідовностей
+                if (currentChar == '\\' && position + 1 < input.Length)
+                {
+                    char nextChar = input[position + 1];
+                    switch (nextChar)
+                    {
+                        case '\\': currentToken.Append('\\'); break;
+                        case '"': currentToken.Append('"'); break;
+                        case 'n': currentToken.Append('\n'); break;
+                        case 'r': currentToken.Append('\r'); break;
+                        case 't': currentToken.Append('\t'); break;
+                        case 'b': currentToken.Append('\b'); break;
+                        case 'f': currentToken.Append('\f'); break;
+                        case '0': currentToken.Append('\0'); break;
+                        default: currentToken.Append(nextChar); break; // якщо невідома послідовність
+                    }
+
+                    position += 2;
+                    continue;
+                }
+                // Звичайна лапка (не екранована)
+                else if (currentChar == '"')
+                {
+                    inQuotes = !inQuotes;
+                    currentToken.Append(currentChar);
+                }
+                // Роздільник поза лапками
+                else if (!inQuotes && position + delimiter.Length <= input.Length &&
+                         Regex.IsMatch(input.Substring(position, delimiter.Length), "^" + escapedDelimiter + "$"))
+                {
+                    if (currentToken.Length > 0)
+                    {
+                        tokens.Add(currentToken.ToString().Trim());
+                        currentToken.Clear();
+                    }
+
+                    position += delimiter.Length - 1;
+                }
+                else
+                {
+                    currentToken.Append(currentChar);
+                }
+
+                position++;
+            }
+
+            if (currentToken.Length > 0)
+            {
+                tokens.Add(currentToken.ToString().Trim());
+            }
+
+            // Фінальна обробка токенів
+            for (int i = 0; i < tokens.Count; i++)
+            {
+                tokens[i] = ProcessToken(tokens[i]);
+            }
+
+            return tokens.ToArray();
+        }
+
+        private static string ProcessToken(string token)
+        {
+            if (string.IsNullOrEmpty(token))
+                return token;
+
+            // Якщо токен в лапках
+            if (token.Length >= 2 && token.StartsWith("\"") && token.EndsWith("\""))
+            {
+                // Видаляємо зовнішні лапки і повертаємо внутрішній вміст
+                return token.Substring(1, token.Length - 2);
+            }
+
+            return token;
         }
         
         private static ValueTableData GetValueTableData(int startRow, int startCol, string name,

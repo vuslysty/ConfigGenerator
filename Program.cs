@@ -36,9 +36,9 @@ bool parseResult = await configGenerator.tryParseTables(
 
 if (parseResult) {
     configGenerator.generateCode(allTables, generatedFolder);
-    //configGenerator.generateJson(allTables, generatedFolder);
+    configGenerator.generateJson(allTables, generatedFolder);
+    
+    MyConfig.Init(allTables);
+
+    Debug.Print("adsf");
 }
-
-MyConfig.Init(allTables);
-
-Debug.Print("adsf");
