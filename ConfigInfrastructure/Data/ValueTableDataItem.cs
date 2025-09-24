@@ -7,6 +7,8 @@ namespace ConfigGenerator.ConfigInfrastructure.Data
     {
         [NonSerialized]
         public int Row;
+        [NonSerialized]
+        public int Height;
         public string Id;
         public string Type;
         public string Value;

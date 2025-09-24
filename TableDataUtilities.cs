@@ -5,6 +5,7 @@ using System.Numerics;
 using System.Text.RegularExpressions;
 using ConfigGenerator.ConfigInfrastructure;
 using ConfigGenerator.ConfigInfrastructure.Data;
+using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 using Humanizer;
 
 namespace ConfigGenerator
@@ -250,6 +251,107 @@ namespace ConfigGenerator
             return null;
         }
 
+        private static bool TryGetValueTableDataItem(int startRow, int startCol, IList<IList<object>> pageData, out ValueTableDataItem item)
+        {
+            item = new ValueTableDataItem()
+            {
+                Row = startRow,
+            };
+            
+            int idCol = startCol;
+            int typeCol = startCol + 1;
+            int valueCol = startCol + 2;
+            int commentCol = startCol + 3;
+
+            int checkRow = startRow;
+
+            string idData = GetCellData(pageData, checkRow, idCol);
+
+            if (string.IsNullOrWhiteSpace(idData) || idData.Equals("END")) {
+                return false;
+            }
+
+            item.Id = idData;
+            
+            item.Type = GetCellData(pageData, checkRow, typeCol);
+            
+            string valueData = GetCellData(pageData, checkRow, valueCol);
+            List<string> values = new List<string>();
+            
+            if (!string.IsNullOrWhiteSpace(valueData)) {
+                values.Add(valueData);
+            }
+            
+            string commentData = GetCellData(pageData, checkRow, commentCol);
+
+            item.Comment = string.IsNullOrWhiteSpace(commentData) ? string.Empty : commentData;
+            
+            while (true)
+            {
+                checkRow++;
+
+                if (checkRow >= pageData.Count) {
+                    break;
+                }
+                
+                idData = GetCellData(pageData, checkRow, idCol);
+
+                if (!string.IsNullOrWhiteSpace(idData)) {
+                    break;
+                }
+
+                if (string.IsNullOrWhiteSpace(item.Type)) {
+                    item.Type = GetCellData(pageData, checkRow, typeCol);
+                }
+                
+                valueData = GetCellData(pageData, checkRow, valueCol);
+
+                if (!string.IsNullOrWhiteSpace(valueData)) {
+                    values.Add(valueData);
+                }
+            
+                commentData = GetCellData(pageData, checkRow, commentCol);
+
+                if (!string.IsNullOrWhiteSpace(commentData)) {
+                    if (item.Comment == String.Empty) {
+                        item.Comment = commentData;
+                    } else {
+                        item.Comment += '\n';
+                        item.Comment += commentData;
+                    }
+                }
+            }
+
+            item.Height = checkRow - startRow;
+            
+            item.Type = string.IsNullOrWhiteSpace(item.Type) 
+                ? AvailableTypes.String.TypeName 
+                : ExtractTypeName(item.Type);
+
+            if (string.IsNullOrWhiteSpace(item.Type)) {
+                item.Type = AvailableTypes.String.TypeName;
+                item.Value = values.Count > 0 ? values[0] : string.Empty;
+                return true;
+            }
+            
+            if (ArrayTypeDescriptor.IsArrayType(item.Type, out string delimiter, out string cleanTypeName))
+            {
+                item.Type = cleanTypeName;
+
+                if (delimiter == null) {
+                    item.Value = ArrayTypeDescriptor.ConvertValuesToSerializedString(values);
+                } else {
+                    item.Value = values.Count > 0
+                        ? ArrayTypeDescriptor.ConvertValuesToSerializedString(values[0], delimiter)
+                        : string.Empty;
+                }
+            } else {
+                item.Value = values.Count > 0 ? values[0] : string.Empty;
+            }
+            
+            return true;
+        }
+        
         private static ValueTableData GetValueTableData(int startRow, int startCol, string name,
             IList<IList<object>> pageData)
         {
@@ -260,63 +362,27 @@ namespace ConfigGenerator
                 StartCol = startCol,
             };
 
-            int idCol = startCol;
-            int typeCol = startCol + 1;
-            int valueCol = startCol + 2;
-            int commentCol = startCol + 3;
-
-            int checkDataRow = startRow + 1;
-
-            while (true)
-            {
-                ValueTableDataItem itemData = new ValueTableDataItem()
-                {
-                    Row = checkDataRow
-                };
+            int checkRow = startRow + 1;
+            
+            while (TryGetValueTableDataItem(checkRow, startCol, pageData, out var dataItem)) {
+                checkRow = dataItem.Row + dataItem.Height;
                 
-                itemData.Id = GetCellData(pageData, checkDataRow, idCol);
-
-                if (string.IsNullOrWhiteSpace(itemData.Id))
-                {
-                    break;
-                }
-
-                if (itemData.Id.StartsWith('!'))
-                {
-                    checkDataRow++;
+                if (dataItem.Id.StartsWith('!'))  {
                     continue;
                 }
 
-                itemData.Type = GetCellData(pageData, checkDataRow, typeCol);
-
-                itemData.Type = string.IsNullOrWhiteSpace(itemData.Type) 
-                    ? "string" 
-                    : ExtractTypeName(itemData.Type);
-
-                itemData.Value = GetCellData(pageData, checkDataRow, valueCol);
-
-                if (string.IsNullOrWhiteSpace(itemData.Value))
-                {
-                    itemData.Value = String.Empty;
-                }
-
-                itemData.Comment = GetCellData(pageData, checkDataRow, commentCol);
-
-                if (string.IsNullOrWhiteSpace(itemData.Comment))
-                {
-                    itemData.Comment = String.Empty;
-                }
-
-                valueTableData.DataValues.Add(itemData);
-                checkDataRow++;
+                valueTableData.DataValues.Add(dataItem);
             }
 
             valueTableData.EndCol = valueTableData.StartCol + 2;
 
-            valueTableData.EndRow = valueTableData.DataValues.Count > 0
-                ? valueTableData.DataValues[^1].Row
-                : valueTableData.StartRow;
-
+            if (valueTableData.DataValues.Count > 0) {
+                ValueTableDataItem lastDataValue = valueTableData.DataValues[^1];
+                valueTableData.EndRow = lastDataValue.Row + lastDataValue.Height - 1;
+            } else {
+                valueTableData.EndRow = valueTableData.StartRow;
+            }
+            
             return valueTableData;
         }
 

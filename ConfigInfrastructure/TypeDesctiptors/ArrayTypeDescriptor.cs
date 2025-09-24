@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 
@@ -7,6 +8,7 @@ namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors
     public class ArrayTypeDescriptor : TypeDescriptor
     {
         private readonly TypeDescriptor _typeDescriptor;
+        public static string MagicDelimiter = "#DLMTR#";
     
         public ArrayTypeDescriptor(TypeDescriptor typeDescriptor)
             : base(
@@ -32,34 +34,17 @@ namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors
                 return false;
             }
 
-            const string basePattern =  @"""(?<content>(?:\\""|.)*?)""|[^\|,\s]+";
-            const string floatPattern = @"""(?<content>(?:\\""|.)*?)""|[^\|\s]+";
-
-            var pattern = _typeDescriptor is FloatTypeDescriptor 
-                ? floatPattern
-                : basePattern;
-        
-            var matches = Regex.Matches(value, pattern);
-        
-            var values = matches
-                .Select(m => m.Groups["content"].Success 
-                    ? m.Groups["content"].Value  // Якщо знайдено в лапках
-                    : m.Value)                   // Інакше — беремо як є
-                .ToList();
+            var values = Tokenize(value, MagicDelimiter);
 
             Array array;
 
-            try
-            {
-                array = Array.CreateInstance(_typeDescriptor.Type, values.Count);
-            }
-            catch
-            {
+            try {
+                array = Array.CreateInstance(_typeDescriptor.Type, values.Length);
+            } catch {
                 return false;
             }
         
-        
-            for (var i = 0; i < values.Count; i++)
+            for (var i = 0; i < values.Length; i++)
             {
                 var splitValue = values[i];
                 string strValue = splitValue.Trim();
@@ -77,6 +62,101 @@ namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors
         
             arrayResult = array;
             return true;
+        }
+        
+        private static readonly Regex ArrayTypeRegex = new Regex(
+            @"^(.+?)\[(.*)\]$", 
+            RegexOptions.Compiled
+        );
+        
+        public static bool IsArrayType(string typeName, out string specialDelimiter, out string cleanTypeName)
+        {
+            specialDelimiter = null;
+            cleanTypeName = null;
+    
+            if (string.IsNullOrEmpty(typeName)) {
+                return false;
+            }
+
+            Match match = ArrayTypeRegex.Match(typeName);
+    
+            if (!match.Success) {
+                return false;
+            }
+
+            string baseType = match.Groups[1].Value;
+            string bracketContent = match.Groups[2].Value;
+    
+            cleanTypeName = baseType + "[]";
+    
+            if (string.IsNullOrEmpty(bracketContent)) {
+                return true;
+            }
+    
+            specialDelimiter = bracketContent;
+            return true;
+        }
+        
+        public static string[] Tokenize(string input, string delimiter = null)
+        {
+            string[] parts;
+            if (!string.IsNullOrEmpty(delimiter)) {
+                parts = Regex.Split(input, @"\s*" + Regex.Escape(delimiter) + @"\s*");
+            } else {
+                parts = new[] { input };
+            }
+    
+            var pattern = @"""(?<content>(?:\\""|.)*?)""|\S+";
+            var tokens = new List<string>();
+    
+            foreach (var part in parts) {
+                if (string.IsNullOrWhiteSpace(part)) continue;
+        
+                var matches = Regex.Matches(part, pattern);
+                tokens.AddRange(matches.Select(m => m.Value));
+            }
+    
+            return tokens.ToArray();
+        }
+
+        public static string ConvertValuesToSerializedString(string valuesAsString, string delimiter) {
+            string resultValue = string.Empty;
+
+            if (valuesAsString == null) {
+                return resultValue;
+            }
+            
+            string[] tokens = Tokenize(valuesAsString, delimiter);
+
+            for (var i = 0; i < tokens.Length; i++) {
+                string token = tokens[i];
+
+                if (i > 0) {
+                    resultValue += MagicDelimiter;
+                }
+                
+                resultValue += token;
+            }
+
+            return resultValue;
+        }
+        
+        public static string ConvertValuesToSerializedString(List<string> values) {
+            string resultValue = string.Empty;
+            
+            if (values == null) {
+                return resultValue;
+            }
+            
+            for (int i = 0; i < values.Count; i++) {
+                if (!string.IsNullOrWhiteSpace(resultValue)) {
+                    resultValue += MagicDelimiter;
+                }
+                
+                resultValue += values[i];
+            }
+            
+            return resultValue;
         }
     }
 }

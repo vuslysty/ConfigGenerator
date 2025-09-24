@@ -95,8 +95,11 @@ public class ConfigGenerator
         
         foreach (var page in allPages)
         {
-            if (TableDataUtilities.ExtractTablesFromPage(page.name, page.values, out List<TableData> resultTables))
-            {
+            if (page.name.StartsWith('\'')) {
+                continue;
+            }
+            
+            if (TableDataUtilities.ExtractTablesFromPage(page.name, page.values, out List<TableData> resultTables)) {
                 allTables.AddRange(resultTables);
             }
         }

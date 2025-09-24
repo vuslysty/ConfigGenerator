@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using ConfigGenerator;
 using ConfigGenerator.ConfigInfrastructure;
 using ConfigGenerator.ConfigInfrastructure.Data;
 using ConfigGenerator.Spreadsheet;
+using TestNamespace;
+
 //using TestNamespace;
 
 //MyConfig.Init(deserializeObject);
@@ -35,3 +38,7 @@ if (parseResult) {
     configGenerator.generateCode(allTables, generatedFolder);
     //configGenerator.generateJson(allTables, generatedFolder);
 }
+
+MyConfig.Init(allTables);
+
+Debug.Print("adsf");
