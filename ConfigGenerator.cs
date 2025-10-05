@@ -119,15 +119,15 @@ public class ConfigGenerator
         
         bool hasAnyInvalid = false;
 
-        foreach (var tableData in allTables)
-        {
-            bool isValid = TableDataUtilities.ValidateTableTypesAndValues(tableData, availableTypes);
-
-            if (!isValid)
-            {
-                hasAnyInvalid = true;
-            }
-        }
+        // foreach (var tableData in allTables)
+        // {
+        //     bool isValid = TableDataUtilities.ValidateTableTypesAndValues(tableData, availableTypes);
+        //
+        //     if (!isValid)
+        //     {
+        //         hasAnyInvalid = true;
+        //     }
+        // }
 
         return !hasAnyInvalid;
     }

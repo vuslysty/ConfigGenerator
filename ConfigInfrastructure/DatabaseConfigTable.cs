@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using ConfigGenerator.ConfigInfrastructure.Data;
 
@@ -54,28 +55,224 @@ namespace ConfigGenerator.ConfigInfrastructure
 
             return false;
         }
+
+        private void InitializeItemWithLinksToOtherTables(object item, DataObject dataObject,
+            AvailableTypes availableTypes,
+            string? itemTypeName = null)
+        {
+            if (itemTypeName == null) {
+                itemTypeName = "Item";
+            }
     
+            Dictionary<string, FieldNode> fieldNodeByName = _fullClassTypeNameToFieldTypes[itemTypeName];
+            
+            Type itemType = item.GetType();
+
+            foreach (DataField field in dataObject.Fields)
+            {
+                var property = itemType.GetProperty(field.Name);
+                
+                if (property == null)
+                {
+                    throw new Exception($"Not found property \"{field.Name}\" in type {itemTypeName}");
+                }
+                
+                FieldNode fieldNode = fieldNodeByName[field.Name];
+                
+                Type tableType = typeof(IConfigTableItem);
+                bool isTableType = tableType.IsAssignableFrom(property.PropertyType)
+                                   || tableType.MakeArrayType().IsAssignableFrom(property.PropertyType);
+                
+                if (!isTableType) {
+                    continue;
+                }
+                
+                object? parsedValue;
+                
+                if (fieldNode.ArrayType.IsArray())
+                {
+                    if (!availableTypes.ParseAsArray(fieldNode.BaseType, field.Values, out parsedValue))
+                    {
+                        throw new Exception($"Cannot parse array values \"{field.Values}\" " +
+                                            $"of type: {fieldNode.BaseType}" +
+                                            $"in type: {itemTypeName}");
+                    }
+                }
+                else
+                {
+                    string strValueData = field.Values.Count > 0 ? field.Values[0] : string.Empty;
+                
+                    if (!availableTypes.ParseValue(fieldNode.BaseType, strValueData, out parsedValue))
+                    {
+                        throw new Exception($"Cannot parse value \"{strValueData}\" " +
+                                            $"of type: {fieldNode.BaseType}" +
+                                            $"in type: {itemTypeName}");
+                    }
+                }
+                
+                property.SetValue(item, parsedValue);
+            }
+            
+            foreach (DataArray array in dataObject.Arrays)
+            {
+                var property = itemType.GetProperty(array.Name);
+                
+                if (property == null)
+                {
+                    throw new Exception($"Not found property \"{array.Name}\" in type {itemTypeName}");
+                }
+                
+                IList list = (IList)property.GetValue(item);
+                
+                if (array.Items.Count != list.Count)
+                {
+                    // TODO add more informational message
+                    throw new Exception("Incorrect number of items");
+                }
+                
+                FieldNode fieldNode = fieldNodeByName[array.Name];
+                string arrayItemTypeName = $"{itemTypeName}.{fieldNode.BaseType}";
+
+                for (var index = 0; index < array.Items.Count; index++)
+                {
+                    var arrayItemData = array.Items[index];
+                    object arrayItem = list[index];
+                    
+                    InitializeItemWithLinksToOtherTables(arrayItem, arrayItemData, availableTypes, arrayItemTypeName);
+                }
+            }
+        }
+
+        private void InitializeItemWithDataObject(object item, DataObject dataObject, AvailableTypes availableTypes, 
+            string? itemTypeName = null)
+        {
+            if (itemTypeName == null) {
+                itemTypeName = "Item";
+            }
+    
+            Dictionary<string, FieldNode> fieldNodeByName = _fullClassTypeNameToFieldTypes[itemTypeName];
+            
+            Type itemType = item.GetType();
+            
+            foreach (DataField field in dataObject.Fields)
+            {
+                var property = itemType.GetProperty(field.Name);
+                
+                if (property == null)
+                {
+                    throw new Exception($"Not found property \"{field.Name}\" in type {itemTypeName}");
+                }
+                
+                FieldNode fieldNode = fieldNodeByName[field.Name];
+                
+                Type tableType = typeof(IConfigTableItem);
+                bool isTableType = tableType.IsAssignableFrom(property.PropertyType)
+                                   || tableType.MakeArrayType().IsAssignableFrom(property.PropertyType);
+                
+                if (isTableType)
+                {
+                    // Properties with IConfigTable types we fill on PostInitialize step
+                    continue;
+                }
+                
+                object? parsedValue;
+                
+                if (fieldNode.ArrayType.IsArray())
+                {
+                    if (!availableTypes.ParseAsArray(fieldNode.BaseType, field.Values, out parsedValue))
+                    {
+                        throw new Exception($"Cannot parse array values \"{field.Values}\" " +
+                                            $"of type: {fieldNode.BaseType}" +
+                                            $"in type: {itemTypeName}");
+                    }
+                }
+                else
+                {
+                    string strValueData = field.Values.Count > 0 ? field.Values[0] : string.Empty;
+                
+                    if (!availableTypes.ParseValue(fieldNode.BaseType, strValueData, out parsedValue))
+                    {
+                        throw new Exception($"Cannot parse value \"{strValueData}\" " +
+                                            $"of type: {fieldNode.BaseType}" +
+                                            $"in type: {itemTypeName}");
+                    }
+                }
+                
+                property.SetValue(item, parsedValue);
+            }
+            
+            foreach (DataArray array in dataObject.Arrays)
+            {
+                var property = itemType.GetProperty(array.Name);
+                
+                if (property == null)
+                {
+                    throw new Exception($"Not found property \"{array.Name}\" in type {itemTypeName}");
+                }
+                
+                Type elementType = property.PropertyType.GetGenericArguments()[0];
+                
+                // Створюємо список потрібного типу
+                Type listType = typeof(List<>).MakeGenericType(elementType);
+                IList list = (IList)Activator.CreateInstance(listType);
+                
+                FieldNode fieldNode = fieldNodeByName[array.Name];
+                string arrayItemTypeName = $"{itemTypeName}.{fieldNode.BaseType}";
+                
+                foreach (DataObject arrayItemData in array.Items)
+                {
+                    object arrayItem = Activator.CreateInstance(elementType);
+                    InitializeItemWithDataObject(arrayItem, arrayItemData, availableTypes, arrayItemTypeName);
+                    list.Add(arrayItem);
+                }
+                
+                property.SetValue(item, list);
+            }
+        }
+        
+        private Dictionary<string, Dictionary<string, FieldNode>> _fullClassTypeNameToFieldTypes =
+            new Dictionary<string, Dictionary<string, FieldNode>>();
+
+        private void InitClassNameToFieldTypesCache(string fullClassPath, FieldNode fieldNode)
+        {
+            Dictionary<string, FieldNode> fieldNameToFieldNode = new();
+            _fullClassTypeNameToFieldTypes[fullClassPath] = fieldNameToFieldNode;
+            
+            foreach (FieldNode child in fieldNode.Children)
+            {
+                fieldNameToFieldNode[child.Name] = child;
+                
+                if (child.Children.Count > 0)
+                {
+                    InitClassNameToFieldTypesCache($"{fullClassPath}.{child.BaseType}", child);
+                }
+            }
+        }
+        
         public void Initialize(TableData tableData, AvailableTypes availableTypes)
         {
             if (tableData is not DatabaseTableData databaseTableData)
             {
                 throw new Exception($"TableData must be of type {typeof(DatabaseTableData)}");
             }
-        
+            
+            _fullClassTypeNameToFieldTypes.Clear();
+            InitClassNameToFieldTypesCache("Item", databaseTableData.RootFieldNode);
+            
             Items.Clear();
-
+            
             Type itemType = typeof(TItem);
-
-            for (var lineIndex = 0; lineIndex < databaseTableData.ValueLines.Count; lineIndex++)
+            
+            for (var index = 0; index < databaseTableData.DataObjects.Count; index++)
             {
-                var lineData = databaseTableData.ValueLines[lineIndex];
+                var dataObject = databaseTableData.DataObjects[index];
                 var item = (TItem)Activator.CreateInstance(itemType);
-
+            
                 if (item == null)
                 {
                     throw new Exception($"Cannot create instance of type {itemType}");
                 }
-            
+                
                 var indexProperty = itemType.GetProperty("Index");
             
                 if (indexProperty == null)
@@ -83,57 +280,9 @@ namespace ConfigGenerator.ConfigInfrastructure
                     throw new Exception($"Not found Index property in type {itemType}");
                 }
             
-                indexProperty.SetValue(item, lineIndex);
-            
-                var idProperty = itemType.GetProperty("Id");
-            
-                if (idProperty == null)
-                {
-                    throw new Exception($"Not found Id property in type {itemType}");
-                }
-            
-                if (!availableTypes.ParseValue(databaseTableData.IdType, lineData.Id, out var idValue))
-                {
-                    throw new Exception($"Cannot parse id value \"{lineData.Id}\" of type: {databaseTableData.IdType}");
-                }
-            
-                idProperty.SetValue(item, idValue);
-
-                if (databaseTableData.FieldDescriptors.Count != lineData.Values.Count)
-                {
-                    throw new Exception("Different number of values and field descriptors");
-                }
-            
-                for (var fieldIndex = 0; fieldIndex < databaseTableData.FieldDescriptors.Count; fieldIndex++)
-                {
-                    var fieldDescriptor = databaseTableData.FieldDescriptors[fieldIndex];
-                    var property = itemType.GetProperty(fieldDescriptor.FieldName);
-
-                    if (property == null)
-                    {
-                        throw new Exception($"Not found property \"{fieldDescriptor.FieldName}\" in type {itemType}");
-                    }
+                indexProperty.SetValue(item, index);
                 
-                    Type tableType = typeof(IConfigTableItem);
-                    bool isTableType = tableType.IsAssignableFrom(property.PropertyType)
-                                       || tableType.MakeArrayType().IsAssignableFrom(property.PropertyType);
-                
-                    if (isTableType)
-                    {
-                        // Properties with IConfigTable types we fill on PostInitialize step
-                        continue;
-                    }
-
-                    string strValueData = lineData.Values[fieldIndex];
-                
-                    if (!availableTypes.ParseValue(fieldDescriptor.TypeName, strValueData, out var parsedValue))
-                    {
-                        throw new Exception($"Cannot parse value \"{strValueData}\" of type: {fieldDescriptor.TypeName}");
-                    }
-                
-                    property.SetValue(item, parsedValue);
-                }
-            
+                InitializeItemWithDataObject(item, dataObject, availableTypes);
                 Items.Add(item);
             }
 
@@ -149,41 +298,19 @@ namespace ConfigGenerator.ConfigInfrastructure
             {
                 throw new Exception($"TableData must be of type {typeof(DatabaseTableData)}");
             }
-        
-            Type itemType = typeof(TItem);
 
-            for (var fieldIndex = 0; fieldIndex < databaseTableData.FieldDescriptors.Count; fieldIndex++)
+            if (databaseTableData.DataObjects.Count != Items.Count)
             {
-                var fieldDescriptor = databaseTableData.FieldDescriptors[fieldIndex];
-                var property = itemType.GetProperty(fieldDescriptor.FieldName);
+                // TODO add more informational message
+                throw new Exception("Incorrect number of items");
+            }
             
-                if (property == null)
-                {
-                    throw new Exception($"Not found property \"{fieldDescriptor.FieldName}\" in type {itemType}");
-                }
-            
-                Type tableType = typeof(IConfigTableItem);
-                bool isTableType = tableType.IsAssignableFrom(property.PropertyType)
-                                   || tableType.MakeArrayType().IsAssignableFrom(property.PropertyType);
-
-                if (!isTableType)
-                {
-                    continue;
-                }
-
-                for (var lineIndex = 0; lineIndex < databaseTableData.ValueLines.Count; lineIndex++)
-                {
-                    var lineData = databaseTableData.ValueLines[lineIndex];
-                    string valueStr = lineData.Values[fieldIndex];
-
-                    if (!availableTypes.ParseValue(fieldDescriptor.TypeName, valueStr, out var parsedValue))
-                    {
-                        throw new Exception($"Cannot parse value \"{valueStr}\" of type: {fieldDescriptor.TypeName}");
-                    }
-
-                    var item = Items[lineIndex];
-                    property.SetValue(item, parsedValue);
-                }
+            for (var index = 0; index < databaseTableData.DataObjects.Count; index++)
+            {
+                var dataObject = databaseTableData.DataObjects[index];
+                var item = Items[index];
+                
+                InitializeItemWithLinksToOtherTables(item, dataObject, availableTypes);
             }
         }
     }

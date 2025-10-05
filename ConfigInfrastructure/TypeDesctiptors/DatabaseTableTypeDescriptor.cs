@@ -21,14 +21,14 @@ namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors
                 return true;
             }
         
-            foreach (DatabaseTableValuesLineData? valueData in _tableData.ValueLines)
-            {
-                if (value == valueData.Id)
-                {
-                    result = valueData;
-                    return true;
-                }
-            }
+            // foreach (DatabaseTableValuesLineData? valueData in _tableData.ValueLines)
+            // {
+            //     if (value == valueData.Id)
+            //     {
+            //         result = valueData;
+            //         return true;
+            //     }
+            // }
         
             return false;
         }

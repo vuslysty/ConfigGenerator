@@ -83,34 +83,115 @@ public static class CodeGenerator
 
         return valueTableClass.AddMembers(properties.ToArray());
     }
+
+    private static ClassDeclarationSyntax GenerateClass(FieldNode fieldNode, AvailableTypes availableTypes)
+    {
+        var newClass = SyntaxFactory.ClassDeclaration(fieldNode.BaseType)
+            .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword));
+
+        var properties = new List<MemberDeclarationSyntax>();
+        var innerClasses = new List<MemberDeclarationSyntax>();
+        
+        foreach (FieldNode child in fieldNode.Children)
+        {
+            if (child.Children.Count > 0)
+            {
+                var property = CreateProperty($"List<{child.BaseType}>", child.Name);
+                
+                properties.Add(property);
+                
+                var innerClass = GenerateClass(child, availableTypes);
+                innerClasses.Add(innerClass);
+            }
+            else
+            {
+                var fieldTypeDescriptor = availableTypes.GetTypeDescriptor(child.BaseType);
+                
+                string typeName = fieldTypeDescriptor.RealTypeName;
+
+                if (child.ArrayType.IsArray()) {
+                    typeName = $"{typeName}[]";
+                }
+                
+                var property = CreateProperty(typeName, child.Name, child.Comment);
+            
+                properties.Add(property);
+            }
+        }
+        
+        newClass = newClass
+            .AddMembers(innerClasses.ToArray())
+            .AddMembers(properties.ToArray());
+        
+        return newClass;
+    }
     
     private static ClassDeclarationSyntax GenerateDatabaseTableClass(DatabaseTableData databaseTableData, AvailableTypes availableTypes)
     {
-        var idTypeDescriptor = availableTypes.GetTypeDescriptor(databaseTableData.IdType);
-        
-        var itemClass = SyntaxFactory.ClassDeclaration("Item")
-            .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
-            .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName(
-                $"ConfigTableItem<{databaseTableData.IdType}>"))
-            );
+        string idType = databaseTableData.RootFieldNode.Children[0].BaseType;
         
         var properties = new List<MemberDeclarationSyntax>();
-        
-        foreach (var fieldDescriptor in databaseTableData.FieldDescriptors)
+        var innerClasses = new List<MemberDeclarationSyntax>();
+
+        // We started from 1 not 0 because we skip Id field
+        for (var i = 1; i < databaseTableData.RootFieldNode.Children.Count; i++)
         {
-            var fieldTypeDescriptor = availableTypes.GetTypeDescriptor(fieldDescriptor.TypeName);
-            var property = CreateProperty(fieldTypeDescriptor.RealTypeName, fieldDescriptor.FieldName, fieldDescriptor.Comment);
-            
-            properties.Add(property);
+            var child = databaseTableData.RootFieldNode.Children[i];
+            if (child.Children.Count > 0)
+            {
+                var property = CreateProperty($"List<{child.BaseType}>", child.Name);
+
+                properties.Add(property);
+
+                var innerClass = GenerateClass(child, availableTypes);
+                innerClasses.Add(innerClass);
+            }
+            else
+            {
+                var fieldTypeDescriptor = availableTypes.GetTypeDescriptor(child.BaseType);
+                
+                string typeName = fieldTypeDescriptor.RealTypeName;
+
+                if (child.ArrayType.IsArray()) {
+                    typeName = $"{typeName}[]";
+                }
+                
+                var property = CreateProperty(typeName, child.Name, child.Comment);
+
+                properties.Add(property);
+            }
         }
 
-        itemClass = itemClass.AddMembers(properties.ToArray());
+        ClassDeclarationSyntax itemMainClass = SyntaxFactory.ClassDeclaration("Item")
+            .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName($"ConfigTableItem<{idType}>")))
+            .AddMembers(properties.ToArray());
+        
+        ClassDeclarationSyntax itemPartialClass = null;
+
+        if (innerClasses.Count > 0)
+        {
+            itemMainClass = itemMainClass.AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword),
+                SyntaxFactory.Token(SyntaxKind.PartialKeyword));
+            
+            itemPartialClass = SyntaxFactory.ClassDeclaration("Item")
+                .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword),
+                    SyntaxFactory.Token(SyntaxKind.PartialKeyword))
+                .AddMembers(innerClasses.ToArray());
+        }
+        else
+        {
+            itemMainClass = itemMainClass.AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword));
+        }
         
         var databaseTableClass = SyntaxFactory.ClassDeclaration(databaseTableData.Name)
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
             .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName(
-                $"DatabaseConfigTable<{databaseTableData.Name}.Item, {databaseTableData.IdType}>")))
-            .AddMembers(itemClass);
+                $"DatabaseConfigTable<{databaseTableData.Name}.Item, {idType}>")))
+            .AddMembers(itemMainClass);
+
+        if (itemPartialClass != null) {
+            databaseTableClass = databaseTableClass.AddMembers(itemPartialClass);
+        }
         
         return databaseTableClass;
     }
@@ -260,7 +341,7 @@ public static class CodeGenerator
             ));
     }
 
-    private static PropertyDeclarationSyntax CreateProperty(string type, string name, string comment)
+    private static PropertyDeclarationSyntax CreateProperty(string type, string name, string? comment = null)
     {
         var property = SyntaxFactory.PropertyDeclaration(SyntaxFactory.ParseTypeName(type), name)
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))

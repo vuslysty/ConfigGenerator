@@ -45,15 +45,15 @@ namespace ConfigGenerator
                 return false;
             }
             
-            if (!ValidateTablesByNamePatterns(tableDataList))
-            {
-                return false;
-            }
+            // if (!ValidateTablesByNamePatterns(tableDataList))
+            // {
+            //     return false;
+            // }
             
-            if (!ValidateTablesByDuplicatesInNames(tableDataList))
-            {
-                return false;
-            }
+            // if (!ValidateTablesByDuplicatesInNames(tableDataList))
+            // {
+            //     return false;
+            // }
             
             return true;
         }
@@ -125,68 +125,68 @@ namespace ConfigGenerator
                     
                     break;
                 
-                case DatabaseTableData databaseTableData:
-                    var idTypeDescriptor = availableTypes.GetTypeDescriptor(databaseTableData.IdType);
-
-                    if (idTypeDescriptor == null || 
-                        (databaseTableData.IdType != "string" && databaseTableData.IdType != "int"))
-                    {
-                        isValid = false;
-                        Console.WriteLine($"Error: used invalid data type \"{databaseTableData.IdType}\" for id. " +
-                                          $"Only valid types for id: \"string\" or \"int\". " +
-                                          $"Table: {databaseTableData.Name}, " +
-                                          $"Row: {databaseTableData.StartRow + 2}, " +
-                                          $"Col: {IndexToColumn(databaseTableData.StartCol)}.");
-                    }
-                    else
-                    {
-                        // Validate id values
-                        foreach (var lineData in databaseTableData.ValueLines)
-                        {
-                            if (!idTypeDescriptor.Parse(lineData.Id, out var parsedValue))
-                            {
-                                isValid = false;
-                                Console.WriteLine($"Error: used invalid data value \"{lineData.Id}\", " +
-                                                  $"for type: \"{idTypeDescriptor.TypeName}\". " +
-                                                  $"Table: {databaseTableData.Name}, " +
-                                                  $"Row: {lineData.Row + 1}, " +
-                                                  $"Col: {IndexToColumn(databaseTableData.StartCol)}.");
-                            }
-                        }
-                    }
-
-                    for (var fieldIndex = 0; fieldIndex < databaseTableData.FieldDescriptors.Count; fieldIndex++)
-                    {
-                        var fieldDescriptor = databaseTableData.FieldDescriptors[fieldIndex];
-                        var typeDescriptor = availableTypes.GetTypeDescriptor(fieldDescriptor.TypeName);
-
-                        if (typeDescriptor == null)
-                        {
-                            isValid = false;
-                            Console.WriteLine($"Error: used invalid data type \"{fieldDescriptor.TypeName}\". " +
-                                              $"Table: {databaseTableData.Name}, " +
-                                              $"Row: {databaseTableData.StartRow + 2}, " +
-                                              $"Col: {IndexToColumn(fieldDescriptor.Col)}.");
-                            continue;
-                        }
-
-                        foreach (var valuesLine in databaseTableData.ValueLines)
-                        {
-                            var valueStr = valuesLine.Values[fieldIndex];
-
-                            if (!typeDescriptor.Parse(valueStr, out var parsedValue))
-                            {
-                                isValid = false;
-                                Console.WriteLine($"Error: used invalid data value \"{valueStr}\", " +
-                                                  $"for type \"{fieldDescriptor.TypeName}\". " +
-                                                  $"Table: {databaseTableData.Name}, " +
-                                                  $"Row: {valuesLine.Row + 1}, " +
-                                                  $"Col: {IndexToColumn(fieldDescriptor.Col)}.");
-                            }
-                        }
-                    }
-
-                    break;
+                // case DatabaseTableData databaseTableData:
+                //     var idTypeDescriptor = availableTypes.GetTypeDescriptor(databaseTableData.IdType);
+                //
+                //     if (idTypeDescriptor == null || 
+                //         (databaseTableData.IdType != "string" && databaseTableData.IdType != "int"))
+                //     {
+                //         isValid = false;
+                //         Console.WriteLine($"Error: used invalid data type \"{databaseTableData.IdType}\" for id. " +
+                //                           $"Only valid types for id: \"string\" or \"int\". " +
+                //                           $"Table: {databaseTableData.Name}, " +
+                //                           $"Row: {databaseTableData.StartRow + 2}, " +
+                //                           $"Col: {IndexToColumn(databaseTableData.StartCol)}.");
+                //     }
+                //     else
+                //     {
+                //         // Validate id values
+                //         foreach (var lineData in databaseTableData.ValueLines)
+                //         {
+                //             if (!idTypeDescriptor.Parse(lineData.Id, out var parsedValue))
+                //             {
+                //                 isValid = false;
+                //                 Console.WriteLine($"Error: used invalid data value \"{lineData.Id}\", " +
+                //                                   $"for type: \"{idTypeDescriptor.TypeName}\". " +
+                //                                   $"Table: {databaseTableData.Name}, " +
+                //                                   $"Row: {lineData.Row + 1}, " +
+                //                                   $"Col: {IndexToColumn(databaseTableData.StartCol)}.");
+                //             }
+                //         }
+                //     }
+                //
+                //     for (var fieldIndex = 0; fieldIndex < databaseTableData.FieldDescriptors.Count; fieldIndex++)
+                //     {
+                //         var fieldDescriptor = databaseTableData.FieldDescriptors[fieldIndex];
+                //         var typeDescriptor = availableTypes.GetTypeDescriptor(fieldDescriptor.TypeName);
+                //
+                //         if (typeDescriptor == null)
+                //         {
+                //             isValid = false;
+                //             Console.WriteLine($"Error: used invalid data type \"{fieldDescriptor.TypeName}\". " +
+                //                               $"Table: {databaseTableData.Name}, " +
+                //                               $"Row: {databaseTableData.StartRow + 2}, " +
+                //                               $"Col: {IndexToColumn(fieldDescriptor.Col)}.");
+                //             continue;
+                //         }
+                //
+                //         foreach (var valuesLine in databaseTableData.ValueLines)
+                //         {
+                //             var valueStr = valuesLine.Values[fieldIndex];
+                //
+                //             if (!typeDescriptor.Parse(valueStr, out var parsedValue))
+                //             {
+                //                 isValid = false;
+                //                 Console.WriteLine($"Error: used invalid data value \"{valueStr}\", " +
+                //                                   $"for type \"{fieldDescriptor.TypeName}\". " +
+                //                                   $"Table: {databaseTableData.Name}, " +
+                //                                   $"Row: {valuesLine.Row + 1}, " +
+                //                                   $"Col: {IndexToColumn(fieldDescriptor.Col)}.");
+                //             }
+                //         }
+                //     }
+                //
+                //     break;
                 default:
                     Console.WriteLine("Error: tried to validate an unsupported table type");
                     isValid = false;
@@ -555,337 +555,618 @@ namespace ConfigGenerator
             return valueTableData;
         }
 
-        private static DatabaseTableData GetDatabaseTableData(int startRow, int startCol, string name,
+        // private static DatabaseTableData GetDatabaseTableDataOLD(int startRow, int startCol, string name,
+        //     IList<IList<object>> pageData)
+        // {
+        //     DatabaseTableData databaseTableData = new DatabaseTableData
+        //     {
+        //         Name = name,
+        //         StartRow = startRow,
+        //         StartCol = startCol,
+        //     };
+        //
+        //     int checkCol = startCol + 1;
+        //     while (TryGetCellData(pageData, startRow, checkCol, out string fieldName) && fieldName != "")
+        //     {
+        //         // We skip column if its name starts with sign '!'
+        //         if (fieldName.StartsWith('!'))
+        //         {
+        //             checkCol++;
+        //             continue;
+        //         }
+        //         
+        //         fieldName = ExtractFieldName(fieldName);
+        //         
+        //         DatabaseTableFieldDescriptorItem typeItem = new DatabaseTableFieldDescriptorItem()
+        //         {
+        //             FieldName = fieldName,
+        //             Col = checkCol
+        //         };
+        //
+        //         if (!TryGetCellData(pageData, startRow + 1, checkCol, out string typeName))
+        //         {
+        //             // When type is empty we decide that type is equal "string"
+        //             typeName = "string";
+        //         }
+        //         
+        //         typeName = ExtractTypeName(typeName);
+        //         typeItem.TypeName = typeName;
+        //
+        //         if (!TryGetCellData(pageData, startRow - 1, checkCol, out string comment))
+        //         {
+        //             comment = string.Empty;
+        //         }
+        //         
+        //         typeItem.Comment = comment;
+        //
+        //         databaseTableData.FieldDescriptors.Add(typeItem);
+        //
+        //         checkCol++;
+        //     }
+        //
+        //     if (!TryGetCellData(pageData, startRow + 1, startCol, out string idType))
+        //     {
+        //         idType = "int";
+        //     }
+        //
+        //     idType = idType.Trim();
+        //     databaseTableData.IdType = idType;
+        //
+        //     int checkDataRow = startRow + 2;
+        //     
+        //     while (true)
+        //     {
+        //         int notEmptyDataCounter = 0;
+        //
+        //         string id = GetCellData(pageData, checkDataRow, startCol);
+        //
+        //         if (string.IsNullOrWhiteSpace(id))
+        //         {
+        //             id = string.Empty;
+        //         }
+        //         else
+        //         {
+        //             notEmptyDataCounter++;
+        //         }
+        //
+        //         if (id.StartsWith('!'))
+        //         {
+        //             checkDataRow++;
+        //             continue;
+        //         }
+        //
+        //         DatabaseTableValuesLineData? lineData = new DatabaseTableValuesLineData()
+        //         {
+        //             Id = id,
+        //             Row = checkDataRow,
+        //         };
+        //
+        //         foreach (var dataType in databaseTableData.FieldDescriptors)
+        //         {
+        //             if (!TryGetCellData(pageData, checkDataRow, dataType.Col, out string dataContent))
+        //             {
+        //                 dataContent = string.Empty;
+        //             }
+        //
+        //             if (dataContent != string.Empty)
+        //             {
+        //                 notEmptyDataCounter++;
+        //             }
+        //
+        //             lineData.Values.Add(dataContent);
+        //         }
+        //
+        //         if (notEmptyDataCounter > 0)
+        //         {
+        //             checkDataRow++;
+        //             databaseTableData.ValueLines.Add(lineData);
+        //         }
+        //         else
+        //         {
+        //             break;
+        //         }
+        //     }
+        //
+        //     if (AvailableTypes.Int.TypeName == databaseTableData.IdType)
+        //     {
+        //         int intId = 1;
+        //         Dictionary<int, int> idToIndexMap = new();
+        //
+        //         int GetNextValidId()
+        //         {
+        //             int id = intId;
+        //             
+        //             while (idToIndexMap.ContainsKey(id))
+        //             {
+        //                 id++;
+        //             }
+        //             
+        //             return id;
+        //         }
+        //
+        //         for (var i = 0; i < databaseTableData.ValueLines.Count; i++)
+        //         {
+        //             var lineData = databaseTableData.ValueLines[i];
+        //             
+        //             if (string.IsNullOrWhiteSpace(lineData.Id))
+        //             {
+        //                 int validId = GetNextValidId();
+        //                 lineData.Id = validId.ToString();
+        //                 idToIndexMap.Add(validId, i);
+        //                 intId = validId + 1;
+        //                 continue;
+        //             }
+        //             
+        //             if (AvailableTypes.Int.Parse(lineData.Id, out var parsedId))
+        //             {
+        //                 int id = (int)parsedId;
+        //
+        //                 if (idToIndexMap.TryGetValue(id, out int index))
+        //                 {
+        //                     idToIndexMap[id] = i;
+        //                     int validId = GetNextValidId();
+        //                     databaseTableData.ValueLines[index].Id = validId.ToString();
+        //                     idToIndexMap.Add(validId, index);
+        //                     intId = validId + 1;
+        //                 }
+        //                 else
+        //                 {
+        //                     idToIndexMap.Add(id, i);
+        //                 }
+        //             }
+        //         }
+        //     }
+        //
+        //     databaseTableData.EndCol = databaseTableData.FieldDescriptors.Count > 0
+        //         ? databaseTableData.FieldDescriptors[^1].Col
+        //         : databaseTableData.StartCol;
+        //
+        //     databaseTableData.EndRow = databaseTableData.ValueLines.Count > 0
+        //         ? databaseTableData.StartRow + databaseTableData.ValueLines.Count + 1
+        //         : databaseTableData.StartRow + 1;
+        //
+        //     return databaseTableData;
+        // }
+
+        private static DatabaseTableData GetDatabaseTableData(
+            int startRow,
+            int startCol,
+            string name,
             IList<IList<object>> pageData)
         {
-            DatabaseTableData databaseTableData = new DatabaseTableData
+            var tableData = new DatabaseTableData
             {
                 Name = name,
                 StartRow = startRow,
                 StartCol = startCol,
             };
 
+            var root = new FieldNode() {
+                Name = "Root"
+            };
+            
+            if (!TryGetCellData(pageData, startRow + 1, startCol, out string idType)) {
+                idType = AvailableTypes.Int.TypeName;
+            }
+            
+            idType = ExtractTypeName(idType);
+            
+            AddToTree(root, ["id"], idType, startCol, null);
+
+            tableData.RootFieldNode = root;
+
             int checkCol = startCol + 1;
-            while (TryGetCellData(pageData, startRow, checkCol, out string fieldName) && fieldName != "")
+            while (TryGetCellData(pageData, startRow, checkCol, out string fieldName))
             {
+                if (string.IsNullOrWhiteSpace(fieldName)) {
+                    break;
+                }
+                
                 // We skip column if its name starts with sign '!'
-                if (fieldName.StartsWith('!'))
-                {
+                if (fieldName.StartsWith('!')) {
                     checkCol++;
                     continue;
                 }
                 
                 fieldName = ExtractFieldName(fieldName);
                 
-                DatabaseTableFieldDescriptorItem typeItem = new DatabaseTableFieldDescriptorItem()
-                {
-                    FieldName = fieldName,
-                    Col = checkCol
-                };
-
-                if (!TryGetCellData(pageData, startRow + 1, checkCol, out string typeName))
-                {
+                string[] fieldsPath = fieldName.Split('.');
+            
+                if (!TryGetCellData(pageData, startRow + 1, checkCol, out string typeName)) {
                     // When type is empty we decide that type is equal "string"
-                    typeName = "string";
+                    typeName = AvailableTypes.String.TypeName;
                 }
                 
                 typeName = ExtractTypeName(typeName);
-                typeItem.TypeName = typeName;
 
-                if (!TryGetCellData(pageData, startRow - 1, checkCol, out string comment))
-                {
-                    comment = string.Empty;
-                }
+                TryGetCellData(pageData, startRow - 1, checkCol, out string comment);
+                AddToTree(root, fieldsPath, typeName, checkCol, string.IsNullOrWhiteSpace(comment) ? null : comment);
                 
-                typeItem.Comment = comment;
-
-                databaseTableData.FieldDescriptors.Add(typeItem);
-
                 checkCol++;
             }
 
-            if (!TryGetCellData(pageData, startRow + 1, startCol, out string idType))
-            {
-                idType = "int";
-            }
+            sortFieldNodes(root);
+            setupBaseTypes(root);
 
-            idType = idType.Trim();
-            databaseTableData.IdType = idType;
+            tableData.DataObjects = new List<DataObject>();
 
-            int checkDataRow = startRow + 2;
-            
-            while (true)
-            {
-                int notEmptyDataCounter = 0;
+            int row = startRow + 2;
 
-                string id = GetCellData(pageData, checkDataRow, startCol);
+            while (row < pageData.Count) {
+                string cellData = GetCellData(pageData, row, startCol);
 
-                if (string.IsNullOrWhiteSpace(id))
-                {
-                    id = string.Empty;
-                }
-                else
-                {
-                    notEmptyDataCounter++;
-                }
-
-                if (id.StartsWith('!'))
-                {
-                    checkDataRow++;
-                    continue;
-                }
-
-                DatabaseTableValuesLineData? lineData = new DatabaseTableValuesLineData()
-                {
-                    Id = id,
-                    Row = checkDataRow,
-                };
-
-                foreach (var dataType in databaseTableData.FieldDescriptors)
-                {
-                    if (!TryGetCellData(pageData, checkDataRow, dataType.Col, out string dataContent))
-                    {
-                        dataContent = string.Empty;
-                    }
-
-                    if (dataContent != string.Empty)
-                    {
-                        notEmptyDataCounter++;
-                    }
-
-                    lineData.Values.Add(dataContent);
-                }
-
-                if (notEmptyDataCounter > 0)
-                {
-                    checkDataRow++;
-                    databaseTableData.ValueLines.Add(lineData);
-                }
-                else
-                {
+                if (cellData.Equals("END")) {
                     break;
                 }
-            }
-
-            if (AvailableTypes.Int.TypeName == databaseTableData.IdType)
-            {
-                int intId = 1;
-                Dictionary<int, int> idToIndexMap = new();
-
-                int GetNextValidId()
-                {
-                    int id = intId;
-                    
-                    while (idToIndexMap.ContainsKey(id))
-                    {
-                        id++;
-                    }
-                    
-                    return id;
+                
+                if (string.IsNullOrWhiteSpace(cellData)) {
+                    break;
                 }
 
-                for (var i = 0; i < databaseTableData.ValueLines.Count; i++)
-                {
-                    var lineData = databaseTableData.ValueLines[i];
-                    
-                    if (string.IsNullOrWhiteSpace(lineData.Id))
-                    {
-                        int validId = GetNextValidId();
-                        lineData.Id = validId.ToString();
-                        idToIndexMap.Add(validId, i);
-                        intId = validId + 1;
-                        continue;
-                    }
-                    
-                    if (AvailableTypes.Int.Parse(lineData.Id, out var parsedId))
-                    {
-                        int id = (int)parsedId;
-
-                        if (idToIndexMap.TryGetValue(id, out int index))
-                        {
-                            idToIndexMap[id] = i;
-                            int validId = GetNextValidId();
-                            databaseTableData.ValueLines[index].Id = validId.ToString();
-                            idToIndexMap.Add(validId, index);
-                            intId = validId + 1;
-                        }
-                        else
-                        {
-                            idToIndexMap.Add(id, i);
-                        }
-                    }
-                }
+                DataObject obj = ParceObject(row, int.MaxValue, root, pageData);
+                tableData.DataObjects.Add(obj);
+                
+                row += obj.Height;
             }
 
-            databaseTableData.EndCol = databaseTableData.FieldDescriptors.Count > 0
-                ? databaseTableData.FieldDescriptors[^1].Col
-                : databaseTableData.StartCol;
-
-            databaseTableData.EndRow = databaseTableData.ValueLines.Count > 0
-                ? databaseTableData.StartRow + databaseTableData.ValueLines.Count + 1
-                : databaseTableData.StartRow + 1;
-
-            return databaseTableData;
+            return tableData;
         }
 
-        private static bool ValidateTablesByDuplicatesInNames(List<TableData> tableDataList)
+        private static DataObject ParceObject(int row, int maxHeight, FieldNode fieldNode,
+            IList<IList<object>> pageData)
         {
-            bool isValid = true;
+            var obj = new DataObject {
+                RowIndex = row,
+                Height = maxHeight,
+                ColumnIndex = fieldNode.ColumnIndex
+            };
             
-            foreach (var tableData in tableDataList)
-            {
-                if (tableData is ValueTableData valueTableData)
-                {
-                    Dictionary<string, int> idToRowMap = new();
-                    
-                    foreach (var data in valueTableData.DataValues)
-                    {
-                        if (idToRowMap.TryGetValue(data.Id, out var row))
-                        {
-                            Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for id \"{data.Id}\": " +
-                                              $"Row [{row + 1} and {data.Row + 1}], " +
-                                              $"Col [{IndexToColumn(valueTableData.StartCol)}]");
-                            
-                            isValid = false;
-                        }
-                        else
-                        {
-                            idToRowMap.Add(data.Id, data.Row);
-                        }
-                    }
-                }
-                else if (tableData is DatabaseTableData databaseTableData)
-                {
-                    Dictionary<string, int> idToRowMap = new();
-                    
-                    for (var i = 0; i < databaseTableData.ValueLines.Count; i++)
-                    {
-                        var lineData = databaseTableData.ValueLines[i];
-                        var id = lineData.Id;
-                        
-                        if (idToRowMap.TryGetValue(id, out var row))
-                        {
-                            isValid = false;
-                            Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for id \"{id}\": " +
-                                            $"Row [{row + 1} and {lineData.Id + 1}], " +
-                                            $"Col [{IndexToColumn(databaseTableData.StartCol)}]");
-                        }
-                        else
-                        {
-                            idToRowMap.Add(id, lineData.Row);
-                        }
-                    }
+            bool hasHeight = false;
+            int checkRow = row;
 
-                    Dictionary<string, int> nameToColMap = new();
-                    
-                    foreach (var data in databaseTableData.FieldDescriptors)
-                    {
-                        if (nameToColMap.TryGetValue(data.FieldName, out var col))
-                        {
-                            isValid = false;
-                            
-                            Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for field name \"{data.FieldName}\": " +
-                                              $"Row [{databaseTableData.StartRow + 1}], " +
-                                              $"Col [{IndexToColumn(col)} and {IndexToColumn(data.Col)}]");
-                        }
-                        else
-                        {
-                            nameToColMap.Add(data.FieldName, data.Col);
-                        }
+            foreach (FieldNode child in fieldNode.Children)
+            {
+                if (child.Children.Count == 0)
+                {
+                    DataField dataField = GetFieldData(checkRow, obj.Height, child, pageData);
+
+                    if (!hasHeight) {
+                        obj.Height = dataField.Height;
+                        hasHeight = true;
                     }
+                    
+                    obj.Fields.Add(dataField);
+                }
+                else
+                {
+                    // Вкладений об'єкт / об'єкти
+                    DataArray array = ParseArray(child, checkRow, obj.Height, pageData);
+                    obj.Arrays.Add(array);
                 }
             }
 
-            return isValid;
+            return obj;
         }
-        
-        private static bool ValidateTablesByNamePatterns(List<TableData> tableDataList)
-        {
-            bool isValid = true;
-            
-            foreach (var tableData in tableDataList)
-            {
-                if (!IsValidTypeName(tableData.Name))
-                {
-                    isValid = false;
 
-                    Console.WriteLine($"Table \"{tableData.Name}\" has invalid name");
+        private static DataArray ParseArray(
+            FieldNode arrayNode,
+            int startRow,
+            int maxHeight,
+            IList<IList<object>> pageData)
+        {
+            var array = new DataArray
+            {
+                Name = arrayNode.Name,
+                RowIndex = startRow,
+                ColumnIndex = arrayNode.ColumnIndex,
+                Height = maxHeight,
+            };
+
+            int checkRow = startRow;
+            
+            while (checkRow < startRow + maxHeight)
+            {
+                int height = startRow + maxHeight - checkRow;
+                DataObject obj = ParceObject(checkRow, height, arrayNode, pageData);
+
+                array.Items.Add(obj);
+                
+                checkRow += obj.Height;
+            }
+
+            return array;
+        }
+
+        private static DataField GetFieldData(int row, int maxHeight, FieldNode field,
+            IList<IList<object>> pageData)
+        {
+            DataField dataField = new DataField()
+            {
+                Name = field.Name,
+                RowIndex = row,
+                ColumnIndex = field.ColumnIndex,
+                ValuesRows = new List<int>()
+            };
+            
+            int height = 0;
+            int checkRow = row;
+
+            while (checkRow < pageData.Count)
+            {
+                if (height >= maxHeight) {
+                    break;
+                }
+
+                string value = GetCellData(pageData, checkRow, field.ColumnIndex);
+
+                if (!string.IsNullOrWhiteSpace(value)) {
+                    if (value.Equals("END")) {
+                        break;
+                    }
+                    
+                    if (field.ArrayType == ArrayType.Multicell) {
+                        dataField.Values.Add(value);
+                    } else {
+                        if (dataField.Values.Count > 0) {
+                            break;
+                        }
+
+                        if (field.ArrayType == ArrayType.OneCell) {
+                            string[] tokens = Tokenize(value, field.ArrayDelimiter);
+                            dataField.Values.AddRange(tokens);
+                        }
+                        else {
+                            dataField.Values.Add(value);
+                        }
+                    }
+                    
+                    dataField.ValuesRows.Add(checkRow);
                 }
                 
-                if (tableData is ValueTableData valueTableData)
-                {
-                    foreach (var data in valueTableData.DataValues)
-                    {
-                        if (!IsValidFieldName(data.Id))
-                        {
-                            isValid = false;
-                            
-                            Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for id \"{data.Id}\": " +
-                                              $"Row [{data.Row + 1}], " +
-                                              $"Col [{IndexToColumn(valueTableData.StartCol)}]");
-                        }
-                        
-                        if (!IsValidTypeName(data.Type))
-                        {
-                            isValid = false;
-                            
-                            Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for type \"{data.Type}\": " +
-                                              $"Row [{data.Row + 1}], " +
-                                              $"Col [{IndexToColumn(valueTableData.StartCol + 1)}]");
-                        }
-                    }
-                }
-                else if (tableData is DatabaseTableData databaseTableData)
-                {
-                    if (!IsValidTypeName(databaseTableData.IdType))
-                    {
-                        isValid = false;
-                        
-                        Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for id type \"{databaseTableData.IdType}\": " +
-                                          $"Row [{databaseTableData.StartRow + 1}], " +
-                                          $"Col [{IndexToColumn(databaseTableData.StartCol)}]");
-                    }
-                    
-                    foreach (var fieldDescriptor in databaseTableData.FieldDescriptors)
-                    {
-                        if (!IsValidTypeName(fieldDescriptor.TypeName))
-                        {
-                            isValid = false;
-                            
-                            Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for type \"{fieldDescriptor.TypeName}\": " +
-                                              $"Row [{databaseTableData.StartRow + 2}], " +
-                                              $"Col [{IndexToColumn(fieldDescriptor.Col)}]");
-                        }
+                checkRow++;
+                height++;
+            }
+            
+            dataField.Height = height;
+            
+            return dataField;
+        }
 
-                        if (!IsValidFieldName(fieldDescriptor.FieldName))
-                        {
-                            isValid = false;
-                            
-                            Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for field \"{fieldDescriptor.FieldName}\": " +
-                                              $"Row [{databaseTableData.StartRow + 1}], " +
-                                              $"Col [{IndexToColumn(fieldDescriptor.Col)}]");
-                        }
-                    }
+        private static void sortFieldNodes(FieldNode fieldNode)
+        {
+            fieldNode.Children = fieldNode.Children.OrderBy(node => node.Children.Count > 0).ToList();
 
-                    if (AvailableTypes.String.TypeName == databaseTableData.IdType)
-                    {
-                        foreach (var lineData in databaseTableData.ValueLines)
-                        {
-                            if (!IsValidFieldName(lineData.Id))
-                            {
-                                isValid = false;
-                            
-                                Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for id \"{lineData.Id}\": " +
-                                                  $"Row [{lineData.Row + 1}], " +
-                                                  $"Col [{IndexToColumn(tableData.StartCol)}]");
-                            }
-                        }
-                    }
+            foreach (FieldNode child in fieldNode.Children) {
+                sortFieldNodes(child);
+            }
+        }
+        
+        private static void setupBaseTypes(FieldNode fieldNode)
+        {
+            bool hasBaseType = !string.IsNullOrWhiteSpace(fieldNode.BaseType);
+            string? childCustomType = null;
+            
+            foreach (FieldNode child in fieldNode.Children) {
+                setupBaseTypes(child);
+
+                if (!hasBaseType && childCustomType == null) {
+                    childCustomType = child.CustomType;
                 }
             }
 
-            return isValid;
+            if (!hasBaseType) {
+                fieldNode.BaseType = childCustomType ?? fieldNode.Name;
+            }
         }
+
+        private static void AddToTree(FieldNode node, string[] path, string typeDef, int columnIndex, string? comment,
+            int index = 0)
+        {
+            string current = path[index];
+            
+            FieldNode? child = node.Children.FirstOrDefault(c => c.Name == current);
+            
+            if (child == null) {
+                child = new FieldNode { Name = ExtractFieldName(current) };
+                node.Children.Add(child);
+            }
+
+            if (index == path.Length - 1) {
+                // кінець шляху → визначаємо тип
+                string? customType = null;
+                string[] typeParts = typeDef.Split('.', ':');
+
+                if (typeParts.Length > 1) {
+                    customType = typeParts[0];
+                    typeDef = typeParts[1];
+                }
+
+                if (string.IsNullOrWhiteSpace(typeDef)) {
+                    typeDef = AvailableTypes.String.TypeName;
+                }
+                
+                bool isArray = IsArrayType(typeDef, out string delimiter, out string cleanTypeName);
+
+                if (isArray) {
+                    typeDef = cleanTypeName;
+
+                    if (string.IsNullOrWhiteSpace(delimiter)) {
+                        child.ArrayType = ArrayType.Multicell;
+                    } else {
+                        child.ArrayType = ArrayType.OneCell;
+                        child.ArrayDelimiter = delimiter;
+                    }
+                }
+                
+                child.BaseType = typeDef;
+                child.CustomType = customType;
+                child.Comment = comment;
+                child.ColumnIndex = columnIndex;
+            }
+            else
+            {
+                AddToTree(child, path, typeDef, columnIndex, comment, index + 1);
+            }
+        }
+
+        // private static bool ValidateTablesByDuplicatesInNames(List<TableData> tableDataList)
+        // {
+        //     bool isValid = true;
+        //     
+        //     foreach (var tableData in tableDataList)
+        //     {
+        //         if (tableData is ValueTableData valueTableData)
+        //         {
+        //             Dictionary<string, int> idToRowMap = new();
+        //             
+        //             foreach (var data in valueTableData.DataValues)
+        //             {
+        //                 if (idToRowMap.TryGetValue(data.Id, out var row))
+        //                 {
+        //                     Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for id \"{data.Id}\": " +
+        //                                       $"Row [{row + 1} and {data.Row + 1}], " +
+        //                                       $"Col [{IndexToColumn(valueTableData.StartCol)}]");
+        //                     
+        //                     isValid = false;
+        //                 }
+        //                 else
+        //                 {
+        //                     idToRowMap.Add(data.Id, data.Row);
+        //                 }
+        //             }
+        //         }
+        //         else if (tableData is DatabaseTableData databaseTableData)
+        //         {
+        //             Dictionary<string, int> idToRowMap = new();
+        //             
+        //             for (var i = 0; i < databaseTableData.ValueLines.Count; i++)
+        //             {
+        //                 var lineData = databaseTableData.ValueLines[i];
+        //                 var id = lineData.Id;
+        //                 
+        //                 if (idToRowMap.TryGetValue(id, out var row))
+        //                 {
+        //                     isValid = false;
+        //                     Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for id \"{id}\": " +
+        //                                     $"Row [{row + 1} and {lineData.Id + 1}], " +
+        //                                     $"Col [{IndexToColumn(databaseTableData.StartCol)}]");
+        //                 }
+        //                 else
+        //                 {
+        //                     idToRowMap.Add(id, lineData.Row);
+        //                 }
+        //             }
+        //
+        //             Dictionary<string, int> nameToColMap = new();
+        //             
+        //             foreach (var data in databaseTableData.FieldDescriptors)
+        //             {
+        //                 if (nameToColMap.TryGetValue(data.FieldName, out var col))
+        //                 {
+        //                     isValid = false;
+        //                     
+        //                     Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for field name \"{data.FieldName}\": " +
+        //                                       $"Row [{databaseTableData.StartRow + 1}], " +
+        //                                       $"Col [{IndexToColumn(col)} and {IndexToColumn(data.Col)}]");
+        //                 }
+        //                 else
+        //                 {
+        //                     nameToColMap.Add(data.FieldName, data.Col);
+        //                 }
+        //             }
+        //         }
+        //     }
+        //
+        //     return isValid;
+        // }
+        
+        // private static bool ValidateTablesByNamePatterns(List<TableData> tableDataList)
+        // {
+        //     bool isValid = true;
+        //     
+        //     foreach (var tableData in tableDataList)
+        //     {
+        //         if (!IsValidTypeName(tableData.Name))
+        //         {
+        //             isValid = false;
+        //
+        //             Console.WriteLine($"Table \"{tableData.Name}\" has invalid name");
+        //         }
+        //         
+        //         if (tableData is ValueTableData valueTableData)
+        //         {
+        //             foreach (var data in valueTableData.DataValues)
+        //             {
+        //                 if (!IsValidFieldName(data.Id))
+        //                 {
+        //                     isValid = false;
+        //                     
+        //                     Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for id \"{data.Id}\": " +
+        //                                       $"Row [{data.Row + 1}], " +
+        //                                       $"Col [{IndexToColumn(valueTableData.StartCol)}]");
+        //                 }
+        //                 
+        //                 if (!IsValidTypeName(data.Type))
+        //                 {
+        //                     isValid = false;
+        //                     
+        //                     Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for type \"{data.Type}\": " +
+        //                                       $"Row [{data.Row + 1}], " +
+        //                                       $"Col [{IndexToColumn(valueTableData.StartCol + 1)}]");
+        //                 }
+        //             }
+        //         }
+        //         else if (tableData is DatabaseTableData databaseTableData)
+        //         {
+        //             if (!IsValidTypeName(databaseTableData.IdType))
+        //             {
+        //                 isValid = false;
+        //                 
+        //                 Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for id type \"{databaseTableData.IdType}\": " +
+        //                                   $"Row [{databaseTableData.StartRow + 1}], " +
+        //                                   $"Col [{IndexToColumn(databaseTableData.StartCol)}]");
+        //             }
+        //             
+        //             foreach (var fieldDescriptor in databaseTableData.FieldDescriptors)
+        //             {
+        //                 if (!IsValidTypeName(fieldDescriptor.TypeName))
+        //                 {
+        //                     isValid = false;
+        //                     
+        //                     Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for type \"{fieldDescriptor.TypeName}\": " +
+        //                                       $"Row [{databaseTableData.StartRow + 2}], " +
+        //                                       $"Col [{IndexToColumn(fieldDescriptor.Col)}]");
+        //                 }
+        //
+        //                 if (!IsValidFieldName(fieldDescriptor.FieldName))
+        //                 {
+        //                     isValid = false;
+        //                     
+        //                     Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for field \"{fieldDescriptor.FieldName}\": " +
+        //                                       $"Row [{databaseTableData.StartRow + 1}], " +
+        //                                       $"Col [{IndexToColumn(fieldDescriptor.Col)}]");
+        //                 }
+        //             }
+        //
+        //             if (AvailableTypes.String.TypeName == databaseTableData.IdType)
+        //             {
+        //                 foreach (var lineData in databaseTableData.ValueLines)
+        //                 {
+        //                     if (!IsValidFieldName(lineData.Id))
+        //                     {
+        //                         isValid = false;
+        //                     
+        //                         Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for id \"{lineData.Id}\": " +
+        //                                           $"Row [{lineData.Row + 1}], " +
+        //                                           $"Col [{IndexToColumn(tableData.StartCol)}]");
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     }
+        //
+        //     return isValid;
+        // }
 
         public static string IndexToColumn(int number)
         {

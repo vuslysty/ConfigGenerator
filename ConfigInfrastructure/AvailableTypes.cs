@@ -60,5 +60,19 @@ namespace ConfigGenerator.ConfigInfrastructure
         
             return typeDescriptor.Parse(value, out result);
         }
+
+        public bool ParseAsArray(string typeName, List<string> values, out object? arrayResult)
+        {
+            arrayResult = null;
+        
+            var typeDescriptor = GetTypeDescriptor(typeName);
+
+            if (typeDescriptor == null)
+            {
+                return false;
+            }
+            
+            return typeDescriptor.ParseAsArray(values, out arrayResult);
+        }
     }
 }
