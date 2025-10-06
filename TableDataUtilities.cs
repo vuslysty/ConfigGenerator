@@ -749,6 +749,8 @@ namespace ConfigGenerator
                 idType = AvailableTypes.Int.TypeName;
             }
             
+            bool isIntTypeId = idType == AvailableTypes.Int.TypeName;
+            
             idType = ExtractTypeName(idType);
             
             AddToTree(root, ["id"], idType, startCol, null);
@@ -756,6 +758,8 @@ namespace ConfigGenerator
             tableData.RootFieldNode = root;
 
             int checkCol = startCol + 1;
+            tableData.EndCol = startCol;
+            
             while (TryGetCellData(pageData, startRow, checkCol, out string fieldName))
             {
                 if (string.IsNullOrWhiteSpace(fieldName)) {
@@ -781,6 +785,7 @@ namespace ConfigGenerator
 
                 TryGetCellData(pageData, startRow - 1, checkCol, out string comment);
                 AddToTree(root, fieldsPath, typeName, checkCol, string.IsNullOrWhiteSpace(comment) ? null : comment);
+                tableData.EndCol = checkCol;
                 
                 checkCol++;
             }
@@ -790,6 +795,7 @@ namespace ConfigGenerator
 
             tableData.DataObjects = new List<DataObject>();
 
+            int startingMaxHeight = isIntTypeId ? 1 : int.MaxValue;
             int row = startRow + 2;
 
             while (row < pageData.Count) {
@@ -799,14 +805,82 @@ namespace ConfigGenerator
                     break;
                 }
                 
-                if (string.IsNullOrWhiteSpace(cellData)) {
+                if (!isIntTypeId && string.IsNullOrWhiteSpace(cellData)) {
                     break;
                 }
 
-                DataObject obj = ParceObject(row, int.MaxValue, root, pageData);
+                DataObject obj = ParceObject(row, startingMaxHeight, root, pageData);
                 tableData.DataObjects.Add(obj);
                 
                 row += obj.Height;
+            }
+            
+            if (isIntTypeId)
+            {
+                int intId = 1;
+                Dictionary<int, int> idToIndexMap = new();
+                int GetNextValidId()
+                {
+                    int id = intId;
+        
+                    while (idToIndexMap.ContainsKey(id))
+                    {
+                        id++;
+                    }
+        
+                    return id;
+                }
+                for (var i = 0; i < tableData.DataObjects.Count; i++)
+                {
+                    DataObject item = tableData.DataObjects[i];
+                    DataField idDataField = item.Fields[0];
+                    
+                    string? idValue = null;
+
+                    if (idDataField.Values.Count > 0) {
+                        idValue = idDataField.Values[0];
+                    } else {
+                        idDataField.Values.Add(string.Empty);
+                    }
+        
+                    if (string.IsNullOrWhiteSpace(idValue))
+                    {
+                        int validId = GetNextValidId();
+                        idDataField.Values[0] = validId.ToString();
+                        idToIndexMap.Add(validId, i);
+                        intId = validId + 1;
+                        continue;
+                    }
+        
+                    if (AvailableTypes.Int.Parse(idValue, out var parsedId))
+                    {
+                        int id = (int)parsedId;
+                        if (idToIndexMap.TryGetValue(id, out int index))
+                        {
+                            idToIndexMap[id] = i;
+                            int validId = GetNextValidId();
+                            
+                            DataObject otherItem = tableData.DataObjects[i];
+                            DataField otherItemIdDataField = otherItem.Fields[0];
+                            
+                            otherItemIdDataField.Values[0] = validId.ToString();
+                            
+                            idToIndexMap.Add(validId, index);
+                            intId = validId + 1;
+                        }
+                        else
+                        {
+                            idToIndexMap.Add(id, i);
+                        }
+                    }
+                }
+            }
+
+            if (tableData.DataObjects.Count > 0) {
+                DataObject lastItem = tableData.DataObjects[^1];
+                tableData.EndRow = lastItem.RowIndex + lastItem.Height - 1;
+            } else {
+                tableData.EndRow = tableData.StartRow + 1;
             }
 
             return tableData;

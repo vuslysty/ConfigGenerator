@@ -94,7 +94,7 @@ namespace ConfigGenerator.ConfigInfrastructure
                     if (!availableTypes.ParseAsArray(fieldNode.BaseType, field.Values, out parsedValue))
                     {
                         throw new Exception($"Cannot parse array values \"{field.Values}\" " +
-                                            $"of type: {fieldNode.BaseType}" +
+                                            $"of type: {fieldNode.BaseType} " +
                                             $"in type: {itemTypeName}");
                     }
                 }
@@ -105,7 +105,7 @@ namespace ConfigGenerator.ConfigInfrastructure
                     if (!availableTypes.ParseValue(fieldNode.BaseType, strValueData, out parsedValue))
                     {
                         throw new Exception($"Cannot parse value \"{strValueData}\" " +
-                                            $"of type: {fieldNode.BaseType}" +
+                                            $"of type: {fieldNode.BaseType} " +
                                             $"in type: {itemTypeName}");
                     }
                 }
@@ -182,7 +182,7 @@ namespace ConfigGenerator.ConfigInfrastructure
                     if (!availableTypes.ParseAsArray(fieldNode.BaseType, field.Values, out parsedValue))
                     {
                         throw new Exception($"Cannot parse array values \"{field.Values}\" " +
-                                            $"of type: {fieldNode.BaseType}" +
+                                            $"of type: {fieldNode.BaseType} " +
                                             $"in type: {itemTypeName}");
                     }
                 }
@@ -193,7 +193,7 @@ namespace ConfigGenerator.ConfigInfrastructure
                     if (!availableTypes.ParseValue(fieldNode.BaseType, strValueData, out parsedValue))
                     {
                         throw new Exception($"Cannot parse value \"{strValueData}\" " +
-                                            $"of type: {fieldNode.BaseType}" +
+                                            $"of type: {fieldNode.BaseType} " +
                                             $"in type: {itemTypeName}");
                     }
                 }
