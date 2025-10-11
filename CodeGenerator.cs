@@ -128,8 +128,6 @@ public static class CodeGenerator
     
     private static ClassDeclarationSyntax GenerateDatabaseTableClass(DatabaseTableData databaseTableData, AvailableTypes availableTypes)
     {
-        string idType = databaseTableData.RootFieldNode.Children[0].BaseType;
-        
         var properties = new List<MemberDeclarationSyntax>();
         var innerClasses = new List<MemberDeclarationSyntax>();
 
@@ -162,8 +160,11 @@ public static class CodeGenerator
             }
         }
 
+        string idType = databaseTableData.RootFieldNode.Children[0].BaseType;
+        TypeDescriptor? idTypeDescription = availableTypes.GetTypeDescriptor(idType);
+        
         ClassDeclarationSyntax itemMainClass = SyntaxFactory.ClassDeclaration("Item")
-            .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName($"ConfigTableItem<{idType}>")))
+            .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName($"ConfigTableItem<{idTypeDescription.RealTypeName}>")))
             .AddMembers(properties.ToArray());
         
         ClassDeclarationSyntax itemPartialClass = null;
@@ -186,7 +187,7 @@ public static class CodeGenerator
         var databaseTableClass = SyntaxFactory.ClassDeclaration(databaseTableData.Name)
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
             .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName(
-                $"DatabaseConfigTable<{databaseTableData.Name}.Item, {idType}>")))
+                $"DatabaseConfigTable<{databaseTableData.Name}.Item, {idTypeDescription.RealTypeName}>")))
             .AddMembers(itemMainClass);
 
         if (itemPartialClass != null) {

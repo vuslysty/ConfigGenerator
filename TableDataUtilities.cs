@@ -745,13 +745,17 @@ namespace ConfigGenerator
                 Name = "Root"
             };
             
-            if (!TryGetCellData(pageData, startRow + 1, startCol, out string idType)) {
+            int startingMaxHeight = int.MaxValue;
+            
+            if (!TryGetCellData(pageData, startRow + 1, startCol, out string idType) || string.IsNullOrWhiteSpace(idType)) {
+                // If we don't set any type we decide that it is INT, and all data is one-rowed
                 idType = AvailableTypes.Int.TypeName;
+                startingMaxHeight = 1;
             }
             
-            bool isIntTypeId = idType == AvailableTypes.Int.TypeName;
-            
             idType = ExtractTypeName(idType);
+            
+            bool isIntTypeId = idType == AvailableTypes.Int.TypeName;
             
             AddToTree(root, ["id"], idType, startCol, null);
 
@@ -794,8 +798,7 @@ namespace ConfigGenerator
             setupBaseTypes(root);
 
             tableData.DataObjects = new List<DataObject>();
-
-            int startingMaxHeight = isIntTypeId ? 1 : int.MaxValue;
+            
             int row = startRow + 2;
 
             while (row < pageData.Count) {

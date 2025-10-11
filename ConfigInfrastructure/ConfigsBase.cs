@@ -6,18 +6,42 @@ using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 
 namespace ConfigGenerator.ConfigInfrastructure
 {
+    internal interface IInitializable
+    {
+        void Initialize();
+    }
+
     public abstract class ConfigsBase
     {
-        private class DatabaseTypeDescriptor : TypeDescriptor
+        private class DatabaseTypeDescriptor : TypeDescriptor, IInitializable
         {
-            private readonly TypeDescriptor _idTypeDescriptor;
+            private readonly AvailableTypes _availableTypes;
+            private readonly string _idTypeName;
             private readonly IDatabaseConfigTable _databaseConfigTable;
+
+            private TypeDescriptor _idTypeDescriptor;
     
-            public DatabaseTypeDescriptor(TypeDescriptor idTypeDescriptor, IDatabaseConfigTable databaseConfigTable, string tableName) 
+            // public DatabaseTypeDescriptor(TypeDescriptor idTypeDescriptor, IDatabaseConfigTable databaseConfigTable, string tableName) 
+            //     : base(tableName, $"{tableName}.Item", databaseConfigTable.Type)
+            // {
+            //     _idTypeDescriptor = idTypeDescriptor;
+            //     _databaseConfigTable = databaseConfigTable;
+            // }
+            
+            public DatabaseTypeDescriptor(AvailableTypes availableTypes, string idTypeName, IDatabaseConfigTable databaseConfigTable, string tableName) 
                 : base(tableName, $"{tableName}.Item", databaseConfigTable.Type)
             {
-                _idTypeDescriptor = idTypeDescriptor;
+                _availableTypes = availableTypes;
+                _idTypeName = idTypeName;
                 _databaseConfigTable = databaseConfigTable;
+            }
+
+            public void Initialize() {
+                _idTypeDescriptor = _availableTypes.GetTypeDescriptor(_idTypeName);
+
+                if (_idTypeDescriptor == null) {
+                    throw new Exception("Could not find available type for id: " + _idTypeName);
+                }
             }
 
             public override bool Parse(string value, out object? result)
@@ -28,13 +52,8 @@ namespace ConfigGenerator.ConfigInfrastructure
                 {
                     return true;
                 }
-
-                if (!_idTypeDescriptor.Parse(value, out object? parsedValue))
-                {
-                    return false;
-                }
             
-                if (_databaseConfigTable.TryGetItemWithId(parsedValue!, out var item))
+                if (_databaseConfigTable.TryGetItemWithTableStringId(value, out var item))
                 {
                     result = item;
                     return true;
@@ -109,23 +128,17 @@ namespace ConfigGenerator.ConfigInfrastructure
                 Type idType = genericArguments[1];
                 var configTableInstance = (IDatabaseConfigTable)fieldInfo.GetValue(this);
 
-                DatabaseTypeDescriptor descriptor = null;
-            
-                if (idType == typeof(int))
-                {
-                    descriptor = new DatabaseTypeDescriptor(AvailableTypes.Int, configTableInstance, fieldInfo.FieldType.Name);
-                }
-                else if (idType == typeof(string))
-                {
-                    descriptor = new DatabaseTypeDescriptor(AvailableTypes.String, configTableInstance, fieldInfo.FieldType.Name);
-                }
-                else
-                {
-                    throw new Exception($"Unknown ID type: {idType}");
-                }
+                string idTypeName = requiredItemType.IsAssignableFrom(idType) 
+                    ? idType.ReflectedType.Name
+                    : idType.Name;
+                
+                DatabaseTypeDescriptor descriptor = 
+                    new DatabaseTypeDescriptor(availableTypes, idTypeName, configTableInstance, fieldInfo.FieldType.Name);
             
                 availableTypes.Register(descriptor);
             }
+            
+            availableTypes.Initialize();
         
             return availableTypes;
         }

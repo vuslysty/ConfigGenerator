@@ -32,6 +32,14 @@ namespace ConfigGenerator.ConfigInfrastructure
             return true;
         }
 
+        public void Initialize() {
+            foreach (var type in _types) {
+                if (type is IInitializable initializable) {
+                    initializable.Initialize();
+                }
+            }
+        }
+
         public void RegisterDefaultTypes()
         {
             Register(Int);
@@ -45,7 +53,7 @@ namespace ConfigGenerator.ConfigInfrastructure
         }
 
         public TypeDescriptor? GetTypeDescriptor(string typeName) =>
-            _types.FirstOrDefault(t => t.TypeName == typeName);
+            _types.FirstOrDefault(t => string.Equals(t.TypeName, typeName, StringComparison.OrdinalIgnoreCase));
 
         public bool ParseValue(string typeName, string value, out object? result)
         {

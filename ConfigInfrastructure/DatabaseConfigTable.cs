@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using ConfigGenerator.ConfigInfrastructure.Data;
+using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 
 namespace ConfigGenerator.ConfigInfrastructure
 {
@@ -15,6 +16,7 @@ namespace ConfigGenerator.ConfigInfrastructure
         public TItem this[TId id] => GetItemWithId(id);
 
         private readonly Dictionary<TId, TItem> _idToItemMap = new();
+        private readonly Dictionary<string, TItem> _stringIdToItemMap = new();
 
         public Type Type { get; }
 
@@ -54,6 +56,19 @@ namespace ConfigGenerator.ConfigInfrastructure
             }
 
             return false;
+        }
+
+        public bool TryGetItemWithTableStringId(string id, out object value)
+        {
+            value = null;
+            
+            if (!_stringIdToItemMap.TryGetValue(id, out var item)) {
+                return false;
+            }
+
+            value = item;
+            
+            return true;
         }
 
         private void InitializeItemWithLinksToOtherTables(object item, DataObject dataObject,
@@ -284,11 +299,9 @@ namespace ConfigGenerator.ConfigInfrastructure
                 
                 InitializeItemWithDataObject(item, dataObject, availableTypes);
                 Items.Add(item);
-            }
 
-            foreach (TItem item in Items)
-            {
-                _idToItemMap[item.Id] = item;
+                string stringId = dataObject.Fields[0].Values[0];
+                _stringIdToItemMap[stringId] = item;
             }
         }
     
@@ -297,6 +310,34 @@ namespace ConfigGenerator.ConfigInfrastructure
             if (tableData is not DatabaseTableData databaseTableData)
             {
                 throw new Exception($"TableData must be of type {typeof(DatabaseTableData)}");
+            }
+            
+            Type idType = typeof(TId);
+            
+            bool isIdAsItemFromOtherTable = typeof(IConfigTableItem).IsAssignableFrom(idType);
+            
+            string idTypeName = isIdAsItemFromOtherTable 
+                ? idType.ReflectedType.Name
+                : idType.Name;
+                
+            TypeDescriptor idTypeDescriptor = availableTypes.GetTypeDescriptor(idTypeName);
+
+            if (isIdAsItemFromOtherTable) {
+                foreach (KeyValuePair<string, TItem> pair in _stringIdToItemMap)
+                {
+                    if (!idTypeDescriptor.Parse(pair.Key, out var parsedIdItem)) {
+                        // TODO informational message
+                        throw new Exception("Cannot parse string id");
+                    }
+
+                    TId idItem = (TId)parsedIdItem;
+                    _idToItemMap[idItem] = pair.Value;
+                }
+            } else {
+                foreach (TItem item in Items)
+                {
+                    _idToItemMap[item.Id] = item;
+                }
             }
 
             if (databaseTableData.DataObjects.Count != Items.Count)
