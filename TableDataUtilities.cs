@@ -50,10 +50,10 @@ namespace ConfigGenerator
                 return false;
             }
             
-            // if (!ValidateTablesByDuplicatesInNames(tableDataList))
-            // {
-            //     return false;
-            // }
+            if (!ValidateTablesByDuplicatesInNames(tableDataList))
+            {
+                return false;
+            }
             
             return true;
         }
@@ -555,179 +555,6 @@ namespace ConfigGenerator
             return valueTableData;
         }
 
-        // private static DatabaseTableData GetDatabaseTableDataOLD(int startRow, int startCol, string name,
-        //     IList<IList<object>> pageData)
-        // {
-        //     DatabaseTableData databaseTableData = new DatabaseTableData
-        //     {
-        //         Name = name,
-        //         StartRow = startRow,
-        //         StartCol = startCol,
-        //     };
-        //
-        //     int checkCol = startCol + 1;
-        //     while (TryGetCellData(pageData, startRow, checkCol, out string fieldName) && fieldName != "")
-        //     {
-        //         // We skip column if its name starts with sign '!'
-        //         if (fieldName.StartsWith('!'))
-        //         {
-        //             checkCol++;
-        //             continue;
-        //         }
-        //         
-        //         fieldName = ExtractFieldName(fieldName);
-        //         
-        //         DatabaseTableFieldDescriptorItem typeItem = new DatabaseTableFieldDescriptorItem()
-        //         {
-        //             FieldName = fieldName,
-        //             Col = checkCol
-        //         };
-        //
-        //         if (!TryGetCellData(pageData, startRow + 1, checkCol, out string typeName))
-        //         {
-        //             // When type is empty we decide that type is equal "string"
-        //             typeName = "string";
-        //         }
-        //         
-        //         typeName = ExtractTypeName(typeName);
-        //         typeItem.TypeName = typeName;
-        //
-        //         if (!TryGetCellData(pageData, startRow - 1, checkCol, out string comment))
-        //         {
-        //             comment = string.Empty;
-        //         }
-        //         
-        //         typeItem.Comment = comment;
-        //
-        //         databaseTableData.FieldDescriptors.Add(typeItem);
-        //
-        //         checkCol++;
-        //     }
-        //
-        //     if (!TryGetCellData(pageData, startRow + 1, startCol, out string idType))
-        //     {
-        //         idType = "int";
-        //     }
-        //
-        //     idType = idType.Trim();
-        //     databaseTableData.IdType = idType;
-        //
-        //     int checkDataRow = startRow + 2;
-        //     
-        //     while (true)
-        //     {
-        //         int notEmptyDataCounter = 0;
-        //
-        //         string id = GetCellData(pageData, checkDataRow, startCol);
-        //
-        //         if (string.IsNullOrWhiteSpace(id))
-        //         {
-        //             id = string.Empty;
-        //         }
-        //         else
-        //         {
-        //             notEmptyDataCounter++;
-        //         }
-        //
-        //         if (id.StartsWith('!'))
-        //         {
-        //             checkDataRow++;
-        //             continue;
-        //         }
-        //
-        //         DatabaseTableValuesLineData? lineData = new DatabaseTableValuesLineData()
-        //         {
-        //             Id = id,
-        //             Row = checkDataRow,
-        //         };
-        //
-        //         foreach (var dataType in databaseTableData.FieldDescriptors)
-        //         {
-        //             if (!TryGetCellData(pageData, checkDataRow, dataType.Col, out string dataContent))
-        //             {
-        //                 dataContent = string.Empty;
-        //             }
-        //
-        //             if (dataContent != string.Empty)
-        //             {
-        //                 notEmptyDataCounter++;
-        //             }
-        //
-        //             lineData.Values.Add(dataContent);
-        //         }
-        //
-        //         if (notEmptyDataCounter > 0)
-        //         {
-        //             checkDataRow++;
-        //             databaseTableData.ValueLines.Add(lineData);
-        //         }
-        //         else
-        //         {
-        //             break;
-        //         }
-        //     }
-        //
-        //     if (AvailableTypes.Int.TypeName == databaseTableData.IdType)
-        //     {
-        //         int intId = 1;
-        //         Dictionary<int, int> idToIndexMap = new();
-        //
-        //         int GetNextValidId()
-        //         {
-        //             int id = intId;
-        //             
-        //             while (idToIndexMap.ContainsKey(id))
-        //             {
-        //                 id++;
-        //             }
-        //             
-        //             return id;
-        //         }
-        //
-        //         for (var i = 0; i < databaseTableData.ValueLines.Count; i++)
-        //         {
-        //             var lineData = databaseTableData.ValueLines[i];
-        //             
-        //             if (string.IsNullOrWhiteSpace(lineData.Id))
-        //             {
-        //                 int validId = GetNextValidId();
-        //                 lineData.Id = validId.ToString();
-        //                 idToIndexMap.Add(validId, i);
-        //                 intId = validId + 1;
-        //                 continue;
-        //             }
-        //             
-        //             if (AvailableTypes.Int.Parse(lineData.Id, out var parsedId))
-        //             {
-        //                 int id = (int)parsedId;
-        //
-        //                 if (idToIndexMap.TryGetValue(id, out int index))
-        //                 {
-        //                     idToIndexMap[id] = i;
-        //                     int validId = GetNextValidId();
-        //                     databaseTableData.ValueLines[index].Id = validId.ToString();
-        //                     idToIndexMap.Add(validId, index);
-        //                     intId = validId + 1;
-        //                 }
-        //                 else
-        //                 {
-        //                     idToIndexMap.Add(id, i);
-        //                 }
-        //             }
-        //         }
-        //     }
-        //
-        //     databaseTableData.EndCol = databaseTableData.FieldDescriptors.Count > 0
-        //         ? databaseTableData.FieldDescriptors[^1].Col
-        //         : databaseTableData.StartCol;
-        //
-        //     databaseTableData.EndRow = databaseTableData.ValueLines.Count > 0
-        //         ? databaseTableData.StartRow + databaseTableData.ValueLines.Count + 1
-        //         : databaseTableData.StartRow + 1;
-        //
-        //     return databaseTableData;
-        // }
-
         private static DatabaseTableData GetDatabaseTableData(
             int startRow,
             int startCol,
@@ -742,7 +569,8 @@ namespace ConfigGenerator
             };
 
             var root = new FieldNode() {
-                Name = "Root"
+                Name = "Root",
+                ColumnIndex = startRow,
             };
             
             int startingMaxHeight = int.MaxValue;
@@ -813,8 +641,11 @@ namespace ConfigGenerator
                 }
 
                 DataObject obj = ParceObject(row, startingMaxHeight, root, pageData);
-                tableData.DataObjects.Add(obj);
-                
+
+                if (!cellData.StartsWith('!')) {
+                    tableData.DataObjects.Add(obj);
+                }
+
                 row += obj.Height;
             }
             
@@ -1040,15 +871,26 @@ namespace ConfigGenerator
             int index = 0)
         {
             string current = path[index];
-            
             FieldNode? child = node.Children.FirstOrDefault(c => c.Name == current);
+
+            bool isLastIndex = index == path.Length - 1;
+
+            if (isLastIndex && child != null && child.Children.Count > 0) {
+                child = null;
+            }
             
-            if (child == null) {
-                child = new FieldNode { Name = ExtractFieldName(current) };
+            if (child == null)
+            {
+                child = new FieldNode
+                {
+                    Name = ExtractFieldName(current),
+                    ColumnIndex = columnIndex,
+                };
+                
                 node.Children.Add(child);
             }
 
-            if (index == path.Length - 1) {
+            if (isLastIndex) {
                 // кінець шляху → визначаємо тип
                 string? customType = null;
                 string[] typeParts = typeDef.Split('.', ':');
@@ -1086,78 +928,123 @@ namespace ConfigGenerator
             }
         }
 
-        // private static bool ValidateTablesByDuplicatesInNames(List<TableData> tableDataList)
-        // {
-        //     bool isValid = true;
-        //     
-        //     foreach (var tableData in tableDataList)
-        //     {
-        //         if (tableData is ValueTableData valueTableData)
-        //         {
-        //             Dictionary<string, int> idToRowMap = new();
-        //             
-        //             foreach (var data in valueTableData.DataValues)
-        //             {
-        //                 if (idToRowMap.TryGetValue(data.Id, out var row))
-        //                 {
-        //                     Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for id \"{data.Id}\": " +
-        //                                       $"Row [{row + 1} and {data.Row + 1}], " +
-        //                                       $"Col [{IndexToColumn(valueTableData.StartCol)}]");
-        //                     
-        //                     isValid = false;
-        //                 }
-        //                 else
-        //                 {
-        //                     idToRowMap.Add(data.Id, data.Row);
-        //                 }
-        //             }
-        //         }
-        //         else if (tableData is DatabaseTableData databaseTableData)
-        //         {
-        //             Dictionary<string, int> idToRowMap = new();
-        //             
-        //             for (var i = 0; i < databaseTableData.ValueLines.Count; i++)
-        //             {
-        //                 var lineData = databaseTableData.ValueLines[i];
-        //                 var id = lineData.Id;
-        //                 
-        //                 if (idToRowMap.TryGetValue(id, out var row))
-        //                 {
-        //                     isValid = false;
-        //                     Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for id \"{id}\": " +
-        //                                     $"Row [{row + 1} and {lineData.Id + 1}], " +
-        //                                     $"Col [{IndexToColumn(databaseTableData.StartCol)}]");
-        //                 }
-        //                 else
-        //                 {
-        //                     idToRowMap.Add(id, lineData.Row);
-        //                 }
-        //             }
-        //
-        //             Dictionary<string, int> nameToColMap = new();
-        //             
-        //             foreach (var data in databaseTableData.FieldDescriptors)
-        //             {
-        //                 if (nameToColMap.TryGetValue(data.FieldName, out var col))
-        //                 {
-        //                     isValid = false;
-        //                     
-        //                     Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for field name \"{data.FieldName}\": " +
-        //                                       $"Row [{databaseTableData.StartRow + 1}], " +
-        //                                       $"Col [{IndexToColumn(col)} and {IndexToColumn(data.Col)}]");
-        //                 }
-        //                 else
-        //                 {
-        //                     nameToColMap.Add(data.FieldName, data.Col);
-        //                 }
-        //             }
-        //         }
-        //     }
-        //
-        //     return isValid;
-        // }
+        private static bool ValidateTablesByDuplicatesInNames(List<TableData> tableDataList)
+        {
+            bool isValid = true;
+            
+            foreach (var tableData in tableDataList)
+            {
+                if (tableData is ValueTableData valueTableData)
+                {
+                    Dictionary<string, int> idToRowMap = new();
+                    
+                    foreach (var data in valueTableData.DataValues)
+                    {
+                        if (idToRowMap.TryGetValue(data.Id, out var row))
+                        {
+                            Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for id \"{data.Id}\": " +
+                                              $"Row [{row + 1} and {data.Row + 1}], " +
+                                              $"Col [{IndexToColumn(valueTableData.StartCol)}]");
+                            
+                            isValid = false;
+                        }
+                        else
+                        {
+                            idToRowMap.Add(data.Id, data.Row);
+                        }
+                    }
+                }
+                else if (tableData is DatabaseTableData databaseTableData)
+                {
+                    Dictionary<string, int> idToRowMap = new();
 
-        private static bool IsValidFieldNode(FieldNode fieldNode, DatabaseTableData databaseTableData)
+                    foreach (DataObject dataObject in databaseTableData.DataObjects)
+                    {
+                        DataField idDataField = dataObject.Fields[0];
+                        string id = idDataField.Values[0];
+                        
+                        if (idToRowMap.TryGetValue(id, out var row))
+                        {
+                            isValid = false;
+                            Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for id \"{id}\": " +
+                                              $"Row [{row + 1} and {idDataField.RowIndex + 1}], " +
+                                              $"Col [{IndexToColumn(databaseTableData.StartCol)}]");
+                        }
+                        else
+                        {
+                            idToRowMap.Add(id, idDataField.RowIndex);
+                        }
+                    }
+
+                    if (!IsValidFieldNodeByNameDuplicates(databaseTableData.RootFieldNode, databaseTableData)) {
+                        isValid = false;
+                    }
+                }
+            }
+        
+            return isValid;
+        }
+        
+        private static bool IsValidFieldNodeByNameDuplicates(FieldNode fieldNode, DatabaseTableData databaseTableData)
+        {
+            bool isValid = true;
+
+            Dictionary<string, FieldNode> fieldNameToFieldNodeMap = new();
+            Dictionary<string, FieldNode> fieldInnerTypeToFieldNodeMap = new();
+            
+            foreach (FieldNode child in fieldNode.Children)
+            {
+                if (fieldNameToFieldNodeMap.TryGetValue(child.Name, out FieldNode? duplicateFieldNode)) 
+                {
+                    isValid = false;
+                    
+                    Console.WriteLine($"Table \"{databaseTableData.Name}\" has duplicates for field name \"{child.Name}\": " +
+                                      $"Row [{databaseTableData.StartRow + 1}], " +
+                                      $"Col [{IndexToColumn(duplicateFieldNode.ColumnIndex)} and {IndexToColumn(child.ColumnIndex)}]");
+                }
+                else
+                {
+                    fieldNameToFieldNodeMap.Add(child.Name, child);
+                }
+
+                if (child.Children.Count == 0) {
+                    continue;
+                }
+
+                if (fieldNode.BaseType == child.BaseType)
+                {
+                    isValid = false;
+                    
+                    Console.WriteLine($"Table \"{databaseTableData.Name}\" has problem for inner type name \"{child.BaseType}\". " +
+                                      "Inner type can't be the same as outer type. " +
+                                      $"Row [{databaseTableData.StartRow + 2}], " +
+                                      $"Col [{IndexToColumn(fieldNode.ColumnIndex)} and {IndexToColumn(child.ColumnIndex)}]");
+                }
+
+                if (fieldInnerTypeToFieldNodeMap.TryGetValue(child.BaseType, out duplicateFieldNode))
+                {
+                    isValid = false;
+                    
+                    Console.WriteLine($"Table \"{databaseTableData.Name}\" has duplicates for inner type name \"{child.BaseType}\": " +
+                                      $"Row [{databaseTableData.StartRow + 2}], " +
+                                      $"Col [{IndexToColumn(duplicateFieldNode.ColumnIndex)} and {IndexToColumn(child.ColumnIndex)}]");
+                }
+                else
+                {
+                    fieldInnerTypeToFieldNodeMap.Add(child.BaseType, child);
+                }
+
+                if (!IsValidFieldNodeByNameDuplicates(child, databaseTableData))
+                {
+                    isValid = false;
+                }
+            }
+            
+            return isValid;
+        }
+        
+        
+        private static bool IsValidFieldNodeByNamePatterns(FieldNode fieldNode, DatabaseTableData databaseTableData)
         {
             bool isValid = true;
 
@@ -1178,7 +1065,7 @@ namespace ConfigGenerator
             }
 
             foreach (FieldNode child in fieldNode.Children) {
-                if (!IsValidFieldNode(child, databaseTableData)) {
+                if (!IsValidFieldNodeByNamePatterns(child, databaseTableData)) {
                     isValid = false;
                 }
             }
@@ -1226,7 +1113,7 @@ namespace ConfigGenerator
                 {
                     foreach (FieldNode childNode in databaseTableData.RootFieldNode.Children)
                     {
-                        if (!IsValidFieldNode(childNode, databaseTableData)) {
+                        if (!IsValidFieldNodeByNamePatterns(childNode, databaseTableData)) {
                             isValid = false;
                         }
                     }
