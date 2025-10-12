@@ -45,10 +45,10 @@ namespace ConfigGenerator
                 return false;
             }
             
-            // if (!ValidateTablesByNamePatterns(tableDataList))
-            // {
-            //     return false;
-            // }
+            if (!ValidateTablesByNamePatterns(tableDataList))
+            {
+                return false;
+            }
             
             // if (!ValidateTablesByDuplicatesInNames(tableDataList))
             // {
@@ -1156,94 +1156,85 @@ namespace ConfigGenerator
         //
         //     return isValid;
         // }
+
+        private static bool IsValidFieldNode(FieldNode fieldNode, DatabaseTableData databaseTableData)
+        {
+            bool isValid = true;
+
+            if (!IsValidTypeName(fieldNode.BaseType)) {
+                isValid = false;
+                
+                Console.WriteLine($"Table \"{databaseTableData.Name}\" has invalid name for type \"{fieldNode.BaseType}\": " +
+                                  $"Row [{databaseTableData.StartRow + 2}], " +
+                                  $"Col [{IndexToColumn(fieldNode.ColumnIndex)}]");
+            }
+
+            if (!IsValidFieldName(fieldNode.Name)) {
+                isValid = false;
+                
+                Console.WriteLine($"Table \"{databaseTableData.Name}\" has invalid name for field \"{fieldNode.Name}\": " +
+                                  $"Row [{databaseTableData.StartRow + 1}], " +
+                                  $"Col [{IndexToColumn(fieldNode.ColumnIndex)}]");
+            }
+
+            foreach (FieldNode child in fieldNode.Children) {
+                if (!IsValidFieldNode(child, databaseTableData)) {
+                    isValid = false;
+                }
+            }
+
+            return isValid;
+        }
         
-        // private static bool ValidateTablesByNamePatterns(List<TableData> tableDataList)
-        // {
-        //     bool isValid = true;
-        //     
-        //     foreach (var tableData in tableDataList)
-        //     {
-        //         if (!IsValidTypeName(tableData.Name))
-        //         {
-        //             isValid = false;
-        //
-        //             Console.WriteLine($"Table \"{tableData.Name}\" has invalid name");
-        //         }
-        //         
-        //         if (tableData is ValueTableData valueTableData)
-        //         {
-        //             foreach (var data in valueTableData.DataValues)
-        //             {
-        //                 if (!IsValidFieldName(data.Id))
-        //                 {
-        //                     isValid = false;
-        //                     
-        //                     Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for id \"{data.Id}\": " +
-        //                                       $"Row [{data.Row + 1}], " +
-        //                                       $"Col [{IndexToColumn(valueTableData.StartCol)}]");
-        //                 }
-        //                 
-        //                 if (!IsValidTypeName(data.Type))
-        //                 {
-        //                     isValid = false;
-        //                     
-        //                     Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for type \"{data.Type}\": " +
-        //                                       $"Row [{data.Row + 1}], " +
-        //                                       $"Col [{IndexToColumn(valueTableData.StartCol + 1)}]");
-        //                 }
-        //             }
-        //         }
-        //         else if (tableData is DatabaseTableData databaseTableData)
-        //         {
-        //             if (!IsValidTypeName(databaseTableData.IdType))
-        //             {
-        //                 isValid = false;
-        //                 
-        //                 Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for id type \"{databaseTableData.IdType}\": " +
-        //                                   $"Row [{databaseTableData.StartRow + 1}], " +
-        //                                   $"Col [{IndexToColumn(databaseTableData.StartCol)}]");
-        //             }
-        //             
-        //             foreach (var fieldDescriptor in databaseTableData.FieldDescriptors)
-        //             {
-        //                 if (!IsValidTypeName(fieldDescriptor.TypeName))
-        //                 {
-        //                     isValid = false;
-        //                     
-        //                     Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for type \"{fieldDescriptor.TypeName}\": " +
-        //                                       $"Row [{databaseTableData.StartRow + 2}], " +
-        //                                       $"Col [{IndexToColumn(fieldDescriptor.Col)}]");
-        //                 }
-        //
-        //                 if (!IsValidFieldName(fieldDescriptor.FieldName))
-        //                 {
-        //                     isValid = false;
-        //                     
-        //                     Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for field \"{fieldDescriptor.FieldName}\": " +
-        //                                       $"Row [{databaseTableData.StartRow + 1}], " +
-        //                                       $"Col [{IndexToColumn(fieldDescriptor.Col)}]");
-        //                 }
-        //             }
-        //
-        //             if (AvailableTypes.String.TypeName == databaseTableData.IdType)
-        //             {
-        //                 foreach (var lineData in databaseTableData.ValueLines)
-        //                 {
-        //                     if (!IsValidFieldName(lineData.Id))
-        //                     {
-        //                         isValid = false;
-        //                     
-        //                         Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for id \"{lineData.Id}\": " +
-        //                                           $"Row [{lineData.Row + 1}], " +
-        //                                           $"Col [{IndexToColumn(tableData.StartCol)}]");
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     }
-        //
-        //     return isValid;
-        // }
+        private static bool ValidateTablesByNamePatterns(List<TableData> tableDataList)
+        {
+            bool isValid = true;
+            
+            foreach (var tableData in tableDataList)
+            {
+                if (!IsValidTypeName(tableData.Name))
+                {
+                    isValid = false;
+        
+                    Console.WriteLine($"Table \"{tableData.Name}\" has invalid name");
+                }
+                
+                if (tableData is ValueTableData valueTableData)
+                {
+                    foreach (var data in valueTableData.DataValues)
+                    {
+                        if (!IsValidFieldName(data.Id))
+                        {
+                            isValid = false;
+                            
+                            Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for id \"{data.Id}\": " +
+                                              $"Row [{data.Row + 1}], " +
+                                              $"Col [{IndexToColumn(valueTableData.StartCol)}]");
+                        }
+                        
+                        if (!IsValidTypeName(data.Type))
+                        {
+                            isValid = false;
+                            
+                            Console.WriteLine($"Table \"{tableData.Name}\" has invalid name for type \"{data.Type}\": " +
+                                              $"Row [{data.Row + 1}], " +
+                                              $"Col [{IndexToColumn(valueTableData.StartCol + 1)}]");
+                        }
+                    }
+                }
+                else if (tableData is DatabaseTableData databaseTableData)
+                {
+                    foreach (FieldNode childNode in databaseTableData.RootFieldNode.Children)
+                    {
+                        if (!IsValidFieldNode(childNode, databaseTableData)) {
+                            isValid = false;
+                        }
+                    }
+                }
+            }
+        
+            return isValid;
+        }
 
         public static string IndexToColumn(int number)
         {

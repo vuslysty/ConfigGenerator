@@ -16,6 +16,8 @@ namespace ConfigGenerator.ConfigInfrastructure.Data
     {
         public FieldNode RootFieldNode;
         public List<DataObject> DataObjects;
+        
+        public string IdType => RootFieldNode.Children[0].BaseType;
     }
     
     [Serializable]

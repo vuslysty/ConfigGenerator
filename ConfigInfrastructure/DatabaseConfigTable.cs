@@ -17,13 +17,6 @@ namespace ConfigGenerator.ConfigInfrastructure
 
         private readonly Dictionary<TId, TItem> _idToItemMap = new();
         private readonly Dictionary<string, TItem> _stringIdToItemMap = new();
-
-        public Type Type { get; }
-
-        protected DatabaseConfigTable()
-        {
-            Type = typeof(TItem);
-        }
     
         public TItem GetItemWithId(TId id)
         {
@@ -245,8 +238,7 @@ namespace ConfigGenerator.ConfigInfrastructure
             }
         }
         
-        private Dictionary<string, Dictionary<string, FieldNode>> _fullClassTypeNameToFieldTypes =
-            new Dictionary<string, Dictionary<string, FieldNode>>();
+        private Dictionary<string, Dictionary<string, FieldNode>> _fullClassTypeNameToFieldTypes = new();
 
         private void InitClassNameToFieldTypesCache(string fullClassPath, FieldNode fieldNode)
         {

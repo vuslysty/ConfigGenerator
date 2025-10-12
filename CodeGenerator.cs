@@ -160,7 +160,7 @@ public static class CodeGenerator
             }
         }
 
-        string idType = databaseTableData.RootFieldNode.Children[0].BaseType;
+        string idType = databaseTableData.IdType;
         TypeDescriptor? idTypeDescription = availableTypes.GetTypeDescriptor(idType);
         
         ClassDeclarationSyntax itemMainClass = SyntaxFactory.ClassDeclaration("Item")

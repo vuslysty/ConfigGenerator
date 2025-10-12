@@ -28,8 +28,8 @@ namespace ConfigGenerator.ConfigInfrastructure
             //     _databaseConfigTable = databaseConfigTable;
             // }
             
-            public DatabaseTypeDescriptor(AvailableTypes availableTypes, string idTypeName, IDatabaseConfigTable databaseConfigTable, string tableName) 
-                : base(tableName, $"{tableName}.Item", databaseConfigTable.Type)
+            public DatabaseTypeDescriptor(AvailableTypes availableTypes, string idTypeName, IDatabaseConfigTable databaseConfigTable, string tableName, Type tableItemType) 
+                : base(tableName, $"{tableName}.Item", tableItemType)
             {
                 _availableTypes = availableTypes;
                 _idTypeName = idTypeName;
@@ -122,7 +122,9 @@ namespace ConfigGenerator.ConfigInfrastructure
                 if (genericArguments.Length != 2)
                     continue;
             
-                if (!requiredItemType.IsAssignableFrom(genericArguments[0]))
+                Type tableItemType = genericArguments[0];
+                
+                if (!requiredItemType.IsAssignableFrom(tableItemType))
                     continue;
             
                 Type idType = genericArguments[1];
@@ -132,8 +134,8 @@ namespace ConfigGenerator.ConfigInfrastructure
                     ? idType.ReflectedType.Name
                     : idType.Name;
                 
-                DatabaseTypeDescriptor descriptor = 
-                    new DatabaseTypeDescriptor(availableTypes, idTypeName, configTableInstance, fieldInfo.FieldType.Name);
+                DatabaseTypeDescriptor descriptor = new DatabaseTypeDescriptor(availableTypes, idTypeName, 
+                    configTableInstance, fieldInfo.FieldType.Name, tableItemType);
             
                 availableTypes.Register(descriptor);
             }
