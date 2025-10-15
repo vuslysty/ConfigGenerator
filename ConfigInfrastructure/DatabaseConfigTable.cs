@@ -134,8 +134,8 @@ namespace ConfigGenerator.ConfigInfrastructure
                 
                 if (array.Items.Count != list.Count)
                 {
-                    // TODO add more informational message
-                    throw new Exception("Incorrect number of items");
+                    throw new Exception($"Incorrect number of items in initialized list {array.Name} ({list.Count} elements) " +
+                                        $"and in array data that we use for initializing this list ({array.Items.Count} elements)");
                 }
                 
                 FieldNode fieldNode = fieldNodeByName[array.Name];
@@ -318,8 +318,8 @@ namespace ConfigGenerator.ConfigInfrastructure
                 foreach (KeyValuePair<string, TItem> pair in _stringIdToItemMap)
                 {
                     if (!idTypeDescriptor.Parse(pair.Key, out var parsedIdItem)) {
-                        // TODO informational message
-                        throw new Exception("Cannot parse string id");
+                        throw new Exception($"Can't parse string id \"{pair.Key}\" with type {idTypeName} " +
+                                            $"for table {databaseTableData.Name}");
                     }
 
                     TId idItem = (TId)parsedIdItem;
@@ -334,8 +334,8 @@ namespace ConfigGenerator.ConfigInfrastructure
 
             if (databaseTableData.DataObjects.Count != Items.Count)
             {
-                // TODO add more informational message
-                throw new Exception("Incorrect number of items");
+                throw new Exception($"Incorrect number of items in initialized list {databaseTableData.Name} ({Items.Count} elements) " +
+                                    $"and in data list that we use for initializing this table ({databaseTableData.DataObjects.Count} elements)");
             }
             
             for (var index = 0; index < databaseTableData.DataObjects.Count; index++)

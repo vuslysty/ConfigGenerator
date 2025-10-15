@@ -1,4 +1,3 @@
-using System;
 using ConfigGenerator.ConfigInfrastructure.Data;
 
 namespace ConfigGenerator.ConfigInfrastructure
@@ -11,7 +10,6 @@ namespace ConfigGenerator.ConfigInfrastructure
 
     public interface IDatabaseConfigTable : IConfigTable
     {
-        // TODO Maybe we do not need type and TryGetItemWithId, only TryGetItemWithTableStringId
         bool TryGetItemWithTableStringId(string id, out object value);
     }
 }

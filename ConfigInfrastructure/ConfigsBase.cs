@@ -20,13 +20,6 @@ namespace ConfigGenerator.ConfigInfrastructure
             private readonly IDatabaseConfigTable _databaseConfigTable;
 
             private TypeDescriptor _idTypeDescriptor;
-    
-            // public DatabaseTypeDescriptor(TypeDescriptor idTypeDescriptor, IDatabaseConfigTable databaseConfigTable, string tableName) 
-            //     : base(tableName, $"{tableName}.Item", databaseConfigTable.Type)
-            // {
-            //     _idTypeDescriptor = idTypeDescriptor;
-            //     _databaseConfigTable = databaseConfigTable;
-            // }
             
             public DatabaseTypeDescriptor(AvailableTypes availableTypes, string idTypeName, IDatabaseConfigTable databaseConfigTable, string tableName, Type tableItemType) 
                 : base(tableName, $"{tableName}.Item", tableItemType)
