@@ -3,14 +3,6 @@ using System.Collections.Generic;
 
 namespace ConfigGenerator.ConfigInfrastructure.Data
 {
-    // [Serializable]
-    // public class DatabaseTableData : TableData
-    // {
-    //     public string IdType;
-    //     public List<DatabaseTableFieldDescriptorItem> FieldDescriptors = new();
-    //     public List<DatabaseTableValuesLineData?> ValueLines = new();
-    // }
-    
     [Serializable]
     public class DatabaseTableData : TableData
     {
@@ -55,12 +47,10 @@ namespace ConfigGenerator.ConfigInfrastructure.Data
     [Serializable]
     public class DataObject
     {
-        //public string Name;
         public int RowIndex;
         public int ColumnIndex;
         public int Height;
         public List<DataField> Fields = new();   // прості поля
-        //public List<DataObject> Objects = new(); // вкладені об'єкти (випадок коли немає полів? а хіба таке може бути)
         public List<DataArray> Arrays = new();   // масиви об'єктів
     }
 

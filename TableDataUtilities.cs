@@ -65,6 +65,7 @@ namespace ConfigGenerator
             switch (tableData)
             {
                 case ValueTableData valueTableData:
+                {
                     foreach (ValueTableDataItem dataValue in valueTableData.DataValues)
                     {
                         var typeDescriptor = availableTypes.GetTypeDescriptor(dataValue.Type);
@@ -82,7 +83,8 @@ namespace ConfigGenerator
 
                         if (dataValue.ArrayType.IsArray())
                         {
-                            for (var i = 0; i < dataValue.Values.Count; i++) {
+                            for (var i = 0; i < dataValue.Values.Count; i++)
+                            {
                                 string value = dataValue.Values[i];
                                 int valueRow = dataValue.Row;
 
@@ -107,7 +109,9 @@ namespace ConfigGenerator
                                                       $"Col: {IndexToColumn(valueTableData.StartCol + 2)}");
                                 }
                             }
-                        } else {
+                        } 
+                        else
+                        {
                             string value = dataValue.Values.Count > 0 ? dataValue.Values.First() : string.Empty;
                             int valueRow = dataValue.ValuesRows.Count > 0 ? dataValue.ValuesRows.First() : dataValue.Row;
                             
@@ -124,75 +128,110 @@ namespace ConfigGenerator
                     }
                     
                     break;
+                }
                 
-                // case DatabaseTableData databaseTableData:
-                //     var idTypeDescriptor = availableTypes.GetTypeDescriptor(databaseTableData.IdType);
-                //
-                //     if (idTypeDescriptor == null || 
-                //         (databaseTableData.IdType != "string" && databaseTableData.IdType != "int"))
-                //     {
-                //         isValid = false;
-                //         Console.WriteLine($"Error: used invalid data type \"{databaseTableData.IdType}\" for id. " +
-                //                           $"Only valid types for id: \"string\" or \"int\". " +
-                //                           $"Table: {databaseTableData.Name}, " +
-                //                           $"Row: {databaseTableData.StartRow + 2}, " +
-                //                           $"Col: {IndexToColumn(databaseTableData.StartCol)}.");
-                //     }
-                //     else
-                //     {
-                //         // Validate id values
-                //         foreach (var lineData in databaseTableData.ValueLines)
-                //         {
-                //             if (!idTypeDescriptor.Parse(lineData.Id, out var parsedValue))
-                //             {
-                //                 isValid = false;
-                //                 Console.WriteLine($"Error: used invalid data value \"{lineData.Id}\", " +
-                //                                   $"for type: \"{idTypeDescriptor.TypeName}\". " +
-                //                                   $"Table: {databaseTableData.Name}, " +
-                //                                   $"Row: {lineData.Row + 1}, " +
-                //                                   $"Col: {IndexToColumn(databaseTableData.StartCol)}.");
-                //             }
-                //         }
-                //     }
-                //
-                //     for (var fieldIndex = 0; fieldIndex < databaseTableData.FieldDescriptors.Count; fieldIndex++)
-                //     {
-                //         var fieldDescriptor = databaseTableData.FieldDescriptors[fieldIndex];
-                //         var typeDescriptor = availableTypes.GetTypeDescriptor(fieldDescriptor.TypeName);
-                //
-                //         if (typeDescriptor == null)
-                //         {
-                //             isValid = false;
-                //             Console.WriteLine($"Error: used invalid data type \"{fieldDescriptor.TypeName}\". " +
-                //                               $"Table: {databaseTableData.Name}, " +
-                //                               $"Row: {databaseTableData.StartRow + 2}, " +
-                //                               $"Col: {IndexToColumn(fieldDescriptor.Col)}.");
-                //             continue;
-                //         }
-                //
-                //         foreach (var valuesLine in databaseTableData.ValueLines)
-                //         {
-                //             var valueStr = valuesLine.Values[fieldIndex];
-                //
-                //             if (!typeDescriptor.Parse(valueStr, out var parsedValue))
-                //             {
-                //                 isValid = false;
-                //                 Console.WriteLine($"Error: used invalid data value \"{valueStr}\", " +
-                //                                   $"for type \"{fieldDescriptor.TypeName}\". " +
-                //                                   $"Table: {databaseTableData.Name}, " +
-                //                                   $"Row: {valuesLine.Row + 1}, " +
-                //                                   $"Col: {IndexToColumn(fieldDescriptor.Col)}.");
-                //             }
-                //         }
-                //     }
-                //
-                //     break;
+                case DatabaseTableData databaseTableData:
+                {
+                    foreach (DataObject dataObject in databaseTableData.DataObjects)
+                    {
+                        if (!IsValidDataObject(dataObject, databaseTableData.RootFieldNode, databaseTableData,
+                                availableTypes))
+                        {
+                            isValid = false;
+                        }
+                    }
+                    
+                    break;
+                }
+                
                 default:
+                {
                     Console.WriteLine("Error: tried to validate an unsupported table type");
                     isValid = false;
                     break;
+                }
             }
 
+            return isValid;
+        }
+        
+        private static bool IsValidDataObject(DataObject dataObject, FieldNode baseFieldNode, DatabaseTableData databaseTableData, AvailableTypes availableTypes)
+        {
+            bool isValid = true;
+        
+            foreach (DataField dataField in dataObject.Fields)
+            {
+                var currentFieldNode = baseFieldNode.Children.Find(childFieldNode => childFieldNode.Name == dataField.Name);
+                var typeDescriptor = availableTypes.GetTypeDescriptor(currentFieldNode.BaseType);
+                
+                if (typeDescriptor == null)
+                {
+                    isValid = false;
+                    Console.WriteLine($"Error: used invalid data type \"{currentFieldNode.BaseType}\". " +
+                                      $"Table: {databaseTableData.Name}, " +
+                                      $"Row: {dataField.RowIndex + 1}, " +
+                                      $"Col: {IndexToColumn(dataField.ColumnIndex)}");
+                    
+                    continue;
+                }
+                
+                if (currentFieldNode.ArrayType.IsArray())
+                {
+                    for (int i = 0; i < dataField.Values.Count; i++)
+                    {
+                        string value = dataField.Values[i];
+                        int valueRow = dataField.RowIndex;
+                        
+                        switch (currentFieldNode.ArrayType)
+                        {
+                            case ArrayType.OneCell:
+                                valueRow = dataField.ValuesRows.First();
+                                break;
+                                    
+                            case ArrayType.Multicell:
+                                valueRow = dataField.ValuesRows[i];
+                                break;
+                        }
+                        
+                        if (!typeDescriptor.Parse(value, out var parsedValue))
+                        {
+                            isValid = false;
+                            Console.WriteLine($"Error: used invalid data value \"{value}\", " +
+                                              $"for field: \"{currentFieldNode.BaseType} {currentFieldNode.Name}\". " +
+                                              $"Table: {databaseTableData.Name}, " +
+                                              $"Row: {valueRow + 1}, " +
+                                              $"Col: {IndexToColumn(currentFieldNode.ColumnIndex)}");
+                        }
+                    }
+                }
+                else
+                {
+                    string value = dataField.Values.Count > 0 ? dataField.Values.First() : string.Empty;
+                    int valueRow = dataField.ValuesRows.Count > 0 ? dataField.ValuesRows.First() : dataField.RowIndex;
+                    
+                    if (!typeDescriptor.Parse(value, out var parsedValue))
+                    {
+                        isValid = false;
+                        Console.WriteLine($"Error: used invalid data value \"{value}\", " +
+                                          $"for field: \"{currentFieldNode.BaseType} {currentFieldNode.Name}\". " +
+                                          $"Table: {databaseTableData.Name}, " +
+                                          $"Row: {valueRow + 1}, " +
+                                          $"Col: {IndexToColumn(currentFieldNode.ColumnIndex)}");
+                    }
+                }
+            }
+        
+            foreach (DataArray array in dataObject.Arrays)
+            {
+                var currentFieldNode = baseFieldNode.Children.Find(childFieldNode => childFieldNode.Name == array.Name);
+                
+                foreach (DataObject dataObjectItem in array.Items) {
+                    if (!IsValidDataObject(dataObjectItem, currentFieldNode, databaseTableData, availableTypes)) {
+                        isValid = false;
+                    }
+                }
+            }
+            
             return isValid;
         }
 
@@ -863,7 +902,7 @@ namespace ConfigGenerator
             }
 
             if (!hasBaseType) {
-                fieldNode.BaseType = childCustomType ?? fieldNode.Name;
+                fieldNode.BaseType = childCustomType ?? $"{fieldNode.Name}Type";
             }
         }
 
