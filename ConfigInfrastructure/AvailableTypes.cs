@@ -55,6 +55,9 @@ namespace ConfigGenerator.ConfigInfrastructure
         public TypeDescriptor? GetTypeDescriptor(string typeName) =>
             _types.FirstOrDefault(t => string.Equals(t.TypeName, typeName, StringComparison.OrdinalIgnoreCase));
 
+        public TypeDescriptor? GetTypeDescriptor(Type type) =>
+            _types.FirstOrDefault(t => t.Type == type);
+        
         public bool ParseValue(string typeName, string value, out object? result)
         {
             result = null;

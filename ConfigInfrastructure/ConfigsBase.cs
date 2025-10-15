@@ -16,24 +16,24 @@ namespace ConfigGenerator.ConfigInfrastructure
         private class DatabaseTypeDescriptor : TypeDescriptor, IInitializable
         {
             private readonly AvailableTypes _availableTypes;
-            private readonly string _idTypeName;
+            private readonly Type _idType;
             private readonly IDatabaseConfigTable _databaseConfigTable;
 
             private TypeDescriptor _idTypeDescriptor;
             
-            public DatabaseTypeDescriptor(AvailableTypes availableTypes, string idTypeName, IDatabaseConfigTable databaseConfigTable, string tableName, Type tableItemType) 
+            public DatabaseTypeDescriptor(AvailableTypes availableTypes, Type idType, IDatabaseConfigTable databaseConfigTable, string tableName, Type tableItemType) 
                 : base(tableName, $"{tableName}.Item", tableItemType)
             {
                 _availableTypes = availableTypes;
-                _idTypeName = idTypeName;
+                _idType = idType;
                 _databaseConfigTable = databaseConfigTable;
             }
 
             public void Initialize() {
-                _idTypeDescriptor = _availableTypes.GetTypeDescriptor(_idTypeName);
+                _idTypeDescriptor = _availableTypes.GetTypeDescriptor(_idType);
 
                 if (_idTypeDescriptor == null) {
-                    throw new Exception("Could not find available type for id: " + _idTypeName);
+                    throw new Exception("Could not find available type for id: " + _idType);
                 }
             }
 
@@ -122,12 +122,8 @@ namespace ConfigGenerator.ConfigInfrastructure
             
                 Type idType = genericArguments[1];
                 var configTableInstance = (IDatabaseConfigTable)fieldInfo.GetValue(this);
-
-                string idTypeName = requiredItemType.IsAssignableFrom(idType) 
-                    ? idType.ReflectedType.Name
-                    : idType.Name;
                 
-                DatabaseTypeDescriptor descriptor = new DatabaseTypeDescriptor(availableTypes, idTypeName, 
+                DatabaseTypeDescriptor descriptor = new DatabaseTypeDescriptor(availableTypes, idType, 
                     configTableInstance, fieldInfo.FieldType.Name, tableItemType);
             
                 availableTypes.Register(descriptor);
