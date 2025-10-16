@@ -6,18 +6,35 @@ using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
 
 namespace ConfigGenerator.ConfigInfrastructure
 {
+    internal interface IInitializable
+    {
+        void Initialize();
+    }
+
     public abstract class ConfigsBase
     {
-        private class DatabaseTypeDescriptor : TypeDescriptor
+        private class DatabaseTypeDescriptor : TypeDescriptor, IInitializable
         {
-            private readonly TypeDescriptor _idTypeDescriptor;
+            private readonly AvailableTypes _availableTypes;
+            private readonly Type _idType;
             private readonly IDatabaseConfigTable _databaseConfigTable;
-    
-            public DatabaseTypeDescriptor(TypeDescriptor idTypeDescriptor, IDatabaseConfigTable databaseConfigTable, string tableName) 
-                : base(tableName, $"{tableName}.Item", databaseConfigTable.Type)
+
+            private TypeDescriptor _idTypeDescriptor;
+            
+            public DatabaseTypeDescriptor(AvailableTypes availableTypes, Type idType, IDatabaseConfigTable databaseConfigTable, string tableName, Type tableItemType) 
+                : base(tableName, $"{tableName}.Item", tableItemType)
             {
-                _idTypeDescriptor = idTypeDescriptor;
+                _availableTypes = availableTypes;
+                _idType = idType;
                 _databaseConfigTable = databaseConfigTable;
+            }
+
+            public void Initialize() {
+                _idTypeDescriptor = _availableTypes.GetTypeDescriptor(_idType);
+
+                if (_idTypeDescriptor == null) {
+                    throw new Exception("Could not find available type for id: " + _idType);
+                }
             }
 
             public override bool Parse(string value, out object? result)
@@ -28,13 +45,8 @@ namespace ConfigGenerator.ConfigInfrastructure
                 {
                     return true;
                 }
-
-                if (!_idTypeDescriptor.Parse(value, out object? parsedValue))
-                {
-                    return false;
-                }
             
-                if (_databaseConfigTable.TryGetItemWithId(parsedValue!, out var item))
+                if (_databaseConfigTable.TryGetItemWithTableStringId(value, out var item))
                 {
                     result = item;
                     return true;
@@ -103,29 +115,21 @@ namespace ConfigGenerator.ConfigInfrastructure
                 if (genericArguments.Length != 2)
                     continue;
             
-                if (!requiredItemType.IsAssignableFrom(genericArguments[0]))
+                Type tableItemType = genericArguments[0];
+                
+                if (!requiredItemType.IsAssignableFrom(tableItemType))
                     continue;
             
                 Type idType = genericArguments[1];
                 var configTableInstance = (IDatabaseConfigTable)fieldInfo.GetValue(this);
-
-                DatabaseTypeDescriptor descriptor = null;
-            
-                if (idType == typeof(int))
-                {
-                    descriptor = new DatabaseTypeDescriptor(AvailableTypes.Int, configTableInstance, fieldInfo.FieldType.Name);
-                }
-                else if (idType == typeof(string))
-                {
-                    descriptor = new DatabaseTypeDescriptor(AvailableTypes.String, configTableInstance, fieldInfo.FieldType.Name);
-                }
-                else
-                {
-                    throw new Exception($"Unknown ID type: {idType}");
-                }
+                
+                DatabaseTypeDescriptor descriptor = new DatabaseTypeDescriptor(availableTypes, idType, 
+                    configTableInstance, fieldInfo.FieldType.Name, tableItemType);
             
                 availableTypes.Register(descriptor);
             }
+            
+            availableTypes.Initialize();
         
             return availableTypes;
         }

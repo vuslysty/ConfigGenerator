@@ -32,6 +32,14 @@ namespace ConfigGenerator.ConfigInfrastructure
             return true;
         }
 
+        public void Initialize() {
+            foreach (var type in _types) {
+                if (type is IInitializable initializable) {
+                    initializable.Initialize();
+                }
+            }
+        }
+
         public void RegisterDefaultTypes()
         {
             Register(Int);
@@ -45,8 +53,11 @@ namespace ConfigGenerator.ConfigInfrastructure
         }
 
         public TypeDescriptor? GetTypeDescriptor(string typeName) =>
-            _types.FirstOrDefault(t => t.TypeName == typeName);
+            _types.FirstOrDefault(t => string.Equals(t.TypeName, typeName, StringComparison.OrdinalIgnoreCase));
 
+        public TypeDescriptor? GetTypeDescriptor(Type type) =>
+            _types.FirstOrDefault(t => t.Type == type);
+        
         public bool ParseValue(string typeName, string value, out object? result)
         {
             result = null;
@@ -59,6 +70,20 @@ namespace ConfigGenerator.ConfigInfrastructure
             }
         
             return typeDescriptor.Parse(value, out result);
+        }
+
+        public bool ParseAsArray(string typeName, List<string> values, out object? arrayResult)
+        {
+            arrayResult = null;
+        
+            var typeDescriptor = GetTypeDescriptor(typeName);
+
+            if (typeDescriptor == null)
+            {
+                return false;
+            }
+            
+            return typeDescriptor.ParseAsArray(values, out arrayResult);
         }
     }
 }

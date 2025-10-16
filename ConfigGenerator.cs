@@ -122,7 +122,7 @@ public class ConfigGenerator
         foreach (var tableData in allTables)
         {
             bool isValid = TableDataUtilities.ValidateTableTypesAndValues(tableData, availableTypes);
-
+        
             if (!isValid)
             {
                 hasAnyInvalid = true;

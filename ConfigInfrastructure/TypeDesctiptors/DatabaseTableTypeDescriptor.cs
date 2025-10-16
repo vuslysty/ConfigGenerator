@@ -20,12 +20,13 @@ namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors
             {
                 return true;
             }
-        
-            foreach (DatabaseTableValuesLineData? valueData in _tableData.ValueLines)
+
+            foreach (DataObject dataObject in _tableData.DataObjects)
             {
-                if (value == valueData.Id)
-                {
-                    result = valueData;
+                string id = dataObject.Fields[0].Values[0];
+                
+                if (id == value) {
+                    result = dataObject;
                     return true;
                 }
             }
