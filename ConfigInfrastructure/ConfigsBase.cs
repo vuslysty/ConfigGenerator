@@ -72,14 +72,23 @@ namespace ConfigGenerator.ConfigInfrastructure
 
             foreach (var tableData in tables)
             {
-                IConfigTable configTable = _nameToConfigTableMap[tableData.Name];
-                configTable.Initialize(tableData, availableTypes);
+                if (tableData is ConstantTableData constantTableData) {
+                    availableTypes.Register(new ConstantTableTypeDescriptor(constantTableData));
+                }
+            }
+
+            foreach (var tableData in tables)
+            {
+                if (_nameToConfigTableMap.TryGetValue(tableData.Name, out IConfigTable configTable)) {
+                    configTable.Initialize(tableData, availableTypes);
+                }
             }
         
             foreach (var tableData in tables)
             {
-                IConfigTable configTable = _nameToConfigTableMap[tableData.Name];
-                configTable.PostInitialize(tableData, availableTypes);
+                if (_nameToConfigTableMap.TryGetValue(tableData.Name, out IConfigTable configTable)) {
+                    configTable.PostInitialize(tableData, availableTypes);
+                }
             }
         
             _initialized = true;

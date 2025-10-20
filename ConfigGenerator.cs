@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using ConfigGenerator.ConfigInfrastructure;
 using ConfigGenerator.ConfigInfrastructure.Data;
 using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
+using ConfigGenerator.ConfigInfrastructure.Utils;
 using ConfigGenerator.Spreadsheet;
 
 namespace ConfigGenerator;
@@ -113,6 +114,10 @@ public class ConfigGenerator
             {
                 case DatabaseTableData databaseTableData:
                     availableTypes.Register(new DatabaseTableTypeDescriptor(databaseTableData));
+                    break;
+                
+                case ConstantTableData constantTableData:
+                    availableTypes.Register(new ConstantTableTypeDescriptor(constantTableData));
                     break;
             }
         }

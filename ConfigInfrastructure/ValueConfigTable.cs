@@ -23,7 +23,7 @@ namespace ConfigGenerator.ConfigInfrastructure
 
             Type currentType = GetType();
         
-            foreach (var dataValue in valueTableData.DataValues)
+            foreach (var dataValue in valueTableData.Items)
             {
                 PropertyInfo? property = currentType.GetProperty(dataValue.Id);
 

@@ -4,12 +4,51 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Text.RegularExpressions;
-using ConfigGenerator.ConfigInfrastructure;
+using CaseConverter;
 using ConfigGenerator.ConfigInfrastructure.Data;
-using Humanizer;
 
-namespace ConfigGenerator
+namespace ConfigGenerator.ConfigInfrastructure.Utils
 {
+    public static class PrimaryKey
+    {
+        public const int Id = 1;
+        public const int Const = 2;
+        public const int Enum = 3;
+
+        private static readonly Dictionary<int, string> _keyToString = new Dictionary<int, string>()
+        {
+            [Id] = "id",
+            [Const] = "const",
+            [Enum] = "enum",
+        };
+
+        public static bool IsPrimaryKey(string? value) {
+            return IsPrimaryKey(value, out _);
+        }
+        
+        public static bool IsPrimaryKey(string? value, out int key)
+        {
+            key = -1;
+                
+            if (value == null) {
+                return false;
+            }
+
+            value = value.Trim();
+
+            foreach (KeyValuePair<int, string> pair in _keyToString)
+            {
+                if (string.Equals(value, pair.Value, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    key = pair.Key;
+                    return true;
+                }
+            }
+                
+            return false;
+        }
+    }
+    
     public static class TableDataUtilities
     {
         private const string TableStartPattern = @"^#([A-Za-z][A-Za-z0-9 ]*)$";
@@ -18,25 +57,51 @@ namespace ConfigGenerator
         {
             tableDataList = new();
             
-            var possibleTables = GetPossibleTables(pageName, pageData);
+            List<PossibleTableData> possibleTables = GetPossibleTables(pageName, pageData);
             
-            foreach (var possibleTable in possibleTables)
+            foreach (PossibleTableData possibleTableData in possibleTables)
             {
-                int startRow = possibleTable.row;
-                int startCol = possibleTable.col;
+                int startRow = possibleTableData.Row;
+                int startCol = possibleTableData.Col;
                 
-                string tableName = ExtractTypeName(possibleTable.name);
+                string tableName = ExtractTypeName(possibleTableData.Name);
 
-                if (GetCellData(pageData, startRow, startCol + 1) == "type" &&
-                    GetCellData(pageData, startRow, startCol + 2) == "value")
+                switch (possibleTableData.PrimaryKey)
                 {
-                    ValueTableData valueTableData = GetValueTableData(startRow, startCol, tableName, pageData);
-                    tableDataList.Add(valueTableData);
-                }
-                else
-                {
-                    DatabaseTableData databaseTableData = GetDatabaseTableData(startRow, startCol, tableName, pageData);
-                    tableDataList.Add(databaseTableData);
+                    case PrimaryKey.Id:
+                    {
+                        string? possibleTypeStr = GetCellData(pageData, startRow, startCol + 1);
+                        possibleTypeStr = possibleTypeStr?.Trim();
+                        
+                        string? possibleValueStr = GetCellData(pageData, startRow, startCol + 2);
+                        possibleValueStr = possibleValueStr?.Trim();
+                        
+                        if (string.Equals(possibleTypeStr, "type", StringComparison.InvariantCultureIgnoreCase) &&
+                            string.Equals(possibleValueStr, "value", StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            ValueTableData valueTableData = GetValueTableData(startRow, startCol, tableName, pageData);
+                            tableDataList.Add(valueTableData);
+                        }
+                        else
+                        {
+                            DatabaseTableData databaseTableData = GetDatabaseTableData(startRow, startCol, tableName, pageData);
+                            tableDataList.Add(databaseTableData);
+                        }
+                        break;
+                    }
+                    case PrimaryKey.Const:
+                    {
+                        string? possibleValueStr = GetCellData(pageData, startRow, startCol + 1);
+                        possibleValueStr = possibleValueStr?.Trim();
+
+                        if (string.Equals(possibleValueStr, "value", StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            ConstantTableData constantTableData = GetConstantTableData(startRow, startCol, tableName, pageData);
+                            tableDataList.Add(constantTableData);
+                        }
+                        
+                        break;
+                    }
                 }
             }
 
@@ -66,7 +131,7 @@ namespace ConfigGenerator
             {
                 case ValueTableData valueTableData:
                 {
-                    foreach (ValueTableDataItem dataValue in valueTableData.DataValues)
+                    foreach (ValueTableDataItem dataValue in valueTableData.Items)
                     {
                         var typeDescriptor = availableTypes.GetTypeDescriptor(dataValue.Type);
 
@@ -141,6 +206,12 @@ namespace ConfigGenerator
                         }
                     }
                     
+                    break;
+                }
+
+                case ConstantTableData constantTableData:
+                {
+                    // We've already validated constants
                     break;
                 }
                 
@@ -235,11 +306,25 @@ namespace ConfigGenerator
             return isValid;
         }
 
-        private static List<(string name, int row, int col)> GetPossibleTables(
-            string pageName,
-            IList<IList<object>> pageData)
+        private struct PossibleTableData
         {
-            List<(string name, int row, int col)> possibleTables = new();
+            public string Name;
+            public int PrimaryKey;
+            public int Row;
+            public int Col;
+
+            public PossibleTableData(string name, int primaryKey, int row, int col)
+            {
+                Name = name;
+                PrimaryKey = primaryKey;
+                Row = row;
+                Col = col;
+            }
+        }
+        
+        private static List<PossibleTableData> GetPossibleTables(string pageName, IList<IList<object>> pageData)
+        {
+            List<PossibleTableData> possibleTables = new();
 
             for (int row = 0; row < pageData.Count; row++)
             {
@@ -249,19 +334,19 @@ namespace ConfigGenerator
                 {
                     string cellData = (string)pageData[row][col];
 
-                    if (row == 0 && col == 0 && (cellData == "id" || cellData == string.Empty))
+                    if (row == 0 && col == 0 && (string.IsNullOrWhiteSpace(cellData) || PrimaryKey.IsPrimaryKey(cellData, out int primaryKey)))
                     {
-                        if (cellData == "id")
+                        if (PrimaryKey.IsPrimaryKey(cellData, out primaryKey))
                         {
-                            possibleTables.Add((pageName, row, col));
+                            possibleTables.Add(new PossibleTableData(pageName, primaryKey, row, col));
                         }
-                        else
+                        else if (string.IsNullOrEmpty(cellData))
                         {
                             if (TryGetCellData(pageData, row + 1, col, out string nextCellData))
                             {
-                                if (nextCellData == "id")
+                                if (PrimaryKey.IsPrimaryKey(nextCellData, out primaryKey))
                                 {
-                                    possibleTables.Add((pageName, row + 1, col));
+                                    possibleTables.Add(new PossibleTableData(pageName, primaryKey, row + 1, col));
                                 }
                             }
                         }
@@ -270,22 +355,11 @@ namespace ConfigGenerator
                     {
                         string tableName = cellData.Substring(1).Trim();
                         
-                        // Data in the cell below the table name exists
                         if (TryGetCellData(pageData, row + 1, col, out string nextCellData))
                         {
-                            if (nextCellData == "id")
+                            if (PrimaryKey.IsPrimaryKey(nextCellData, out primaryKey))
                             {
-                                possibleTables.Add((tableName, row + 1, col));
-                            }
-                            else if (nextCellData == "")
-                            {
-                                if (TryGetCellData(pageData, row + 2, col, out nextCellData))
-                                {
-                                    if (nextCellData == "id")
-                                    {
-                                        possibleTables.Add((tableName, row + 2, col));
-                                    }
-                                }
+                                possibleTables.Add(new PossibleTableData(tableName, primaryKey, row + 1, col));
                             }
                         }
                     }
@@ -312,7 +386,7 @@ namespace ConfigGenerator
             return true;
         }
 
-        private static string GetCellData(IList<IList<object>> pageData, int row, int col)
+        private static string? GetCellData(IList<IList<object>> pageData, int row, int col)
         {
             if (TryGetCellData(pageData, row, col, out string cellData))
             {
@@ -336,7 +410,7 @@ namespace ConfigGenerator
 
             int checkRow = startRow;
 
-            string idData = GetCellData(pageData, checkRow, idCol);
+            string? idData = GetCellData(pageData, checkRow, idCol);
 
             if (string.IsNullOrWhiteSpace(idData) || idData.Equals("END")) {
                 return false;
@@ -394,10 +468,10 @@ namespace ConfigGenerator
             }
 
             item.Height = checkRow - startRow;
-            
-            item.Type = string.IsNullOrWhiteSpace(item.Type) 
-                ? AvailableTypes.String.TypeName 
-                : ExtractTypeName(item.Type);
+
+            if (string.IsNullOrWhiteSpace(item.Type)) {
+                item.Type = AvailableTypes.String.TypeName;
+            }
 
             bool isArray = IsArrayType(item.Type, out string delimiter, out string cleanTypeName);
             
@@ -430,6 +504,8 @@ namespace ConfigGenerator
                     item.ValuesRows.Add(valueTuple.row);
                 }
             }
+
+            item.Type = ExtractTypeName(item.Type);
             
             return true;
         }
@@ -467,6 +543,8 @@ namespace ConfigGenerator
             return true;
         }
 
+        // TODO Shitcode, need to rewrite, current version is hard for understanding
+        // TODO Need add ability to also use \n as delimiter by default
         public static string[] Tokenize(string input, string delimiter = null)
         {
             if (string.IsNullOrEmpty(input))
@@ -578,20 +656,144 @@ namespace ConfigGenerator
                 if (dataItem.Id.StartsWith('!'))  {
                     continue;
                 }
+                
+                dataItem.Id = ExtractFieldName(dataItem.Id);
 
-                valueTableData.DataValues.Add(dataItem);
+                valueTableData.Items.Add(dataItem);
             }
 
+            // TODO need check, looks like we forgot about a comment line
             valueTableData.EndCol = valueTableData.StartCol + 2;
 
-            if (valueTableData.DataValues.Count > 0) {
-                ValueTableDataItem lastDataValue = valueTableData.DataValues[^1];
+            if (valueTableData.Items.Count > 0) {
+                ValueTableDataItem lastDataValue = valueTableData.Items[^1];
                 valueTableData.EndRow = lastDataValue.Row + lastDataValue.Height - 1;
             } else {
                 valueTableData.EndRow = valueTableData.StartRow;
             }
             
             return valueTableData;
+        }
+
+        private static bool TryGetConstantTableDataItem(int startRow, int startCol, IList<IList<object>> pageData,
+            out ConstantTableDataItem item)
+        {
+            item = new ConstantTableDataItem()
+            {
+                Row = startRow,
+            };
+            
+            int keyCol = startCol;
+            int valueCol = startCol + 1;
+            int commentCol = startCol + 2;
+            
+            string? keyData = GetCellData(pageData, startRow, keyCol);
+
+            if (string.IsNullOrWhiteSpace(keyData) || keyData.Equals("END")) {
+                return false;
+            }
+
+            item.Name = keyData;
+            item.StringValue = GetCellData(pageData, startRow, valueCol);
+            item.Comment = GetCellData(pageData, startRow, commentCol);
+
+            return true;
+        }
+        
+        private static ConstantTableData GetConstantTableData(int startRow, int startCol, string name,
+            IList<IList<object>> pageData)
+        {
+            ConstantTableData constantTableData = new ConstantTableData()
+            {
+                Name = name,
+                StartRow = startRow,
+                StartCol = startCol,
+            };
+            
+            int checkRow = startRow + 1;
+
+            while (TryGetConstantTableDataItem(checkRow, startCol, pageData, out var dataItem))
+            {
+                checkRow++;
+                
+                if (dataItem.Name.StartsWith('!'))  {
+                    continue;
+                }
+                
+                // We do it here, because during parsing ConstantTableDataItem, name can start with ! sign
+                dataItem.Name = ExtractFieldName(dataItem.Name);
+                
+                constantTableData.Items.Add(dataItem);
+            }
+
+            int intId = 1;
+            Dictionary<int, int> idToIndexMap = new();
+
+            int GetNextValidId()
+            {
+                int id = intId;
+
+                while (idToIndexMap.ContainsKey(id))
+                {
+                    id++;
+                }
+
+                return id;
+            }
+            
+            for (var i = 0; i < constantTableData.Items.Count; i++)
+            {
+                ConstantTableDataItem item = constantTableData.Items[i];
+                
+                if (string.IsNullOrWhiteSpace(item.StringValue))
+                {
+                    int validId = GetNextValidId();
+                    item.Value = validId;
+                    idToIndexMap.Add(validId, i);
+                    intId = validId + 1;
+                    continue;
+                }
+
+                if (AvailableTypes.Int.Parse(item.StringValue, out var parsedId))
+                {
+                    int id = (int)parsedId;
+                    if (idToIndexMap.TryGetValue(id, out int index))
+                    {
+                        idToIndexMap[id] = i;
+                        int validId = GetNextValidId();
+
+                        ConstantTableDataItem otherItem = constantTableData.Items[i];
+                        otherItem.Value = validId;
+
+                        idToIndexMap.Add(validId, index);
+                        intId = validId + 1;
+                    }
+                    else
+                    {
+                        item.Value = id;
+                        idToIndexMap.Add(id, i);
+                    }
+                }
+                else
+                {
+                    int validId = GetNextValidId();
+                    item.Value = validId;
+                    idToIndexMap.Add(validId, i);
+                    intId = validId + 1;
+                    
+                    Console.WriteLine($"Warning: used invalid int value \"{item.StringValue}\", " +
+                                      $"for constant: \"{item.Name}\". " +
+                                      $"Table: {constantTableData.Name}, " +
+                                      $"Row: {item.Row + 1}, " +
+                                      $"Col: {IndexToColumn(startCol + 1)}. " +
+                                      $"Instead we use a next free value for this constant: \"{validId}\"");
+                }
+            }
+            
+            constantTableData.EndCol = startCol + 2; // comment col
+            constantTableData.EndRow = constantTableData.Items.Count > 0 ? constantTableData.Items[^1].Row : startRow;
+            
+            return constantTableData;
         }
 
         private static DatabaseTableData GetDatabaseTableData(
@@ -651,8 +853,6 @@ namespace ConfigGenerator
                     // When type is empty we decide that type is equal "string"
                     typeName = AvailableTypes.String.TypeName;
                 }
-                
-                typeName = ExtractTypeName(typeName);
 
                 TryGetCellData(pageData, startRow - 1, checkCol, out string comment);
                 AddToTree(root, fieldsPath, typeName, checkCol, string.IsNullOrWhiteSpace(comment) ? null : comment);
@@ -743,6 +943,7 @@ namespace ConfigGenerator
                         }
                         else
                         {
+                            idDataField.Values[0] = id.ToString();
                             idToIndexMap.Add(id, i);
                         }
                     }
@@ -935,7 +1136,7 @@ namespace ConfigGenerator
                 string[] typeParts = typeDef.Split('.', ':');
 
                 if (typeParts.Length > 1) {
-                    customType = typeParts[0];
+                    customType = ExtractTypeName(typeParts[0]);
                     typeDef = typeParts[1];
                 }
 
@@ -956,7 +1157,7 @@ namespace ConfigGenerator
                     }
                 }
                 
-                child.BaseType = typeDef;
+                child.BaseType = ExtractTypeName(typeDef);
                 child.CustomType = customType;
                 child.Comment = comment;
                 child.ColumnIndex = columnIndex;
@@ -977,7 +1178,7 @@ namespace ConfigGenerator
                 {
                     Dictionary<string, int> idToRowMap = new();
                     
-                    foreach (var data in valueTableData.DataValues)
+                    foreach (var data in valueTableData.Items)
                     {
                         if (idToRowMap.TryGetValue(data.Id, out var row))
                         {
@@ -1017,6 +1218,26 @@ namespace ConfigGenerator
 
                     if (!IsValidFieldNodeByNameDuplicates(databaseTableData.RootFieldNode, databaseTableData)) {
                         isValid = false;
+                    }
+                }
+                else if (tableData is ConstantTableData constantTableData)
+                {
+                    Dictionary<string, int> idToRowMap = new();
+                    
+                    foreach (var data in constantTableData.Items)
+                    {
+                        if (idToRowMap.TryGetValue(data.Name, out var row))
+                        {
+                            Console.WriteLine($"Table \"{tableData.Name}\" has duplicates for names \"{data.Name}\": " +
+                                              $"Row [{row + 1} and {data.Row + 1}], " +
+                                              $"Col [{IndexToColumn(constantTableData.StartCol)}]");
+                            
+                            isValid = false;
+                        }
+                        else
+                        {
+                            idToRowMap.Add(data.Name, data.Row);
+                        }
                     }
                 }
             }
@@ -1127,7 +1348,7 @@ namespace ConfigGenerator
                 
                 if (tableData is ValueTableData valueTableData)
                 {
-                    foreach (var data in valueTableData.DataValues)
+                    foreach (var data in valueTableData.Items)
                     {
                         if (!IsValidFieldName(data.Id))
                         {
@@ -1154,6 +1375,20 @@ namespace ConfigGenerator
                     {
                         if (!IsValidFieldNodeByNamePatterns(childNode, databaseTableData)) {
                             isValid = false;
+                        }
+                    }
+                }
+                else if (tableData is ConstantTableData constantTableData)
+                {
+                    foreach (var data in constantTableData.Items)
+                    {
+                        if (!IsValidFieldName(data.Name))
+                        {
+                            isValid = false;
+                            
+                            Console.WriteLine($"Table \"{tableData.Name}\" has invalid name \"{data.Name}\": " +
+                                              $"Row [{data.Row + 1}], " +
+                                              $"Col [{IndexToColumn(constantTableData.StartCol)}]");
                         }
                     }
                 }
@@ -1241,17 +1476,18 @@ namespace ConfigGenerator
         {
             string result = value;
             
-            if (value.StartsWith('$'))
-            {
-                result = result.TrimStart('$').Pascalize();
+            if (value.StartsWith('$')) {
+                result = result.TrimStart('$');
             }
+
+            result = result.ToPascalCase();
             
             return RemoveWhitespaces(result);
         }
-        
-        private static string ExtractFieldName(string value)
+
+        public static string ExtractFieldName(string value)
         {
-            string result = value.Pascalize();
+            string result = value.ToPascalCase();
             return RemoveWhitespaces(result);
         }
 

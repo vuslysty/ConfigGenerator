@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
+using CaseConverter;
 using ConfigGenerator.ConfigInfrastructure;
 using ConfigGenerator.ConfigInfrastructure.Data;
 using ConfigGenerator.ConfigInfrastructure.TypeDesctiptors;
-using Humanizer;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -24,6 +24,10 @@ public static class CodeGenerator
                 case DatabaseTableData databaseTableData:
                     availableTypes.Register(new DatabaseTableTypeDescriptor(databaseTableData));
                     break;
+                
+                case ConstantTableData constantTableData:
+                    availableTypes.Register(new ConstantTableTypeDescriptor(constantTableData));
+                    break;
             }
         }
         
@@ -40,6 +44,10 @@ public static class CodeGenerator
             else if (table is DatabaseTableData databaseTableData)
             {
                 classes.Add(GenerateDatabaseTableClass(databaseTableData, availableTypes));
+            }
+            else if (table is ConstantTableData constantTableData)
+            {
+                classes.Add(GenerateConstantTableClass(constantTableData));
             }
         }
         
@@ -67,7 +75,7 @@ public static class CodeGenerator
 
         List<MemberDeclarationSyntax> properties = new List<MemberDeclarationSyntax>();
         
-        foreach (var dataItem in valueTableData.DataValues)
+        foreach (var dataItem in valueTableData.Items)
         {
             var typeDescriptor = availableTypes.GetTypeDescriptor(dataItem.Type);
 
@@ -82,6 +90,35 @@ public static class CodeGenerator
         }
 
         return valueTableClass.AddMembers(properties.ToArray());
+    }
+
+    private static ClassDeclarationSyntax GenerateConstantTableClass(ConstantTableData constantTableData)
+    {
+        var valueTableClass = SyntaxFactory.ClassDeclaration(constantTableData.Name)
+            .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword));
+
+        List<MemberDeclarationSyntax> constants = new List<MemberDeclarationSyntax>();
+
+        foreach (var dataItem in constantTableData.Items)
+        {
+            var constantField = SyntaxFactory.FieldDeclaration(
+                    SyntaxFactory.VariableDeclaration(SyntaxFactory.ParseTypeName("int"))
+                        .AddVariables(SyntaxFactory.VariableDeclarator(dataItem.Name)
+                            .WithInitializer(SyntaxFactory.EqualsValueClause(
+                                    SyntaxFactory.LiteralExpression(
+                                        SyntaxKind.NumericLiteralExpression,
+                                        SyntaxFactory.Literal(dataItem.Value))))))
+                    .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword), SyntaxFactory.Token(SyntaxKind.ConstKeyword));
+
+            if (!string.IsNullOrWhiteSpace(dataItem.Comment))
+            {
+                constantField = constantField.WithLeadingTrivia(CreateXmlComment(dataItem.Comment));
+            }
+            
+            constants.Add(constantField);
+        }
+
+        return valueTableClass.AddMembers(constants.ToArray());
     }
 
     private static ClassDeclarationSyntax GenerateClass(FieldNode fieldNode, AvailableTypes availableTypes)
@@ -212,7 +249,11 @@ public static class CodeGenerator
         
         foreach (var table in tables)
         {
-            var fieldName = $"_{table.Name.Camelize()}";
+            if (table is ConstantTableData) {
+                continue;
+            }
+            
+            var fieldName = $"_{table.Name.ToCamelCase()}";
 
             var tableType = SyntaxFactory.ParseTypeName(table.Name);
             

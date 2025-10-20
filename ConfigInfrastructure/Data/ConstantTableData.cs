@@ -4,8 +4,8 @@ using System.Collections.Generic;
 namespace ConfigGenerator.ConfigInfrastructure.Data
 {
     [Serializable]
-    public class ValueTableData : TableData
+    public class ConstantTableData : TableData
     {
-        public List<ValueTableDataItem> Items = new();
+        public List<ConstantTableDataItem> Items = new();
     }
 }
