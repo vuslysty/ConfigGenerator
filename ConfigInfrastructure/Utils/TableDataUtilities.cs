@@ -811,7 +811,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
 
             var root = new FieldNode() {
                 Name = "Root",
-                ColumnIndex = startRow,
+                ColumnIndex = startCol,
             };
             
             int startingMaxHeight = int.MaxValue;
