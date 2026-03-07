@@ -49,8 +49,39 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                     Dictionary<string, int> idToRowMap = new();
                     foreach (DataObject dataObject in databaseTableData.DataObjects)
                     {
+                        if (dataObject.Fields.Count == 0)
+                        {
+                            result.AddError(
+                                "Data object has no fields while validating duplicate ids.",
+                                tableData.Name,
+                                dataObject.RowIndex + 1,
+                                IndexToColumn(databaseTableData.StartCol));
+                            continue;
+                        }
+
                         DataField idDataField = dataObject.Fields[0];
+
+                        if (idDataField.Values.Count == 0)
+                        {
+                            result.AddError(
+                                "Data object has empty id value while validating duplicate ids.",
+                                tableData.Name,
+                                idDataField.RowIndex + 1,
+                                IndexToColumn(databaseTableData.StartCol));
+                            continue;
+                        }
+
                         string id = idDataField.Values[0];
+
+                        if (string.IsNullOrWhiteSpace(id))
+                        {
+                            result.AddError(
+                                "Data object has blank id value while validating duplicate ids.",
+                                tableData.Name,
+                                idDataField.RowIndex + 1,
+                                IndexToColumn(databaseTableData.StartCol));
+                            continue;
+                        }
 
                         if (idToRowMap.TryGetValue(id, out var row))
                         {
