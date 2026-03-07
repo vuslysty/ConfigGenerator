@@ -1,44 +1,73 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using ConfigGenerator;
+using ConfigGenerator.Application;
+using ConfigGenerator.Application.Artifacts;
+using ConfigGenerator.Application.Reporting;
 using ConfigGenerator.ConfigInfrastructure;
-using ConfigGenerator.ConfigInfrastructure.Data;
+using ConfigGenerator.Parsing;
 using ConfigGenerator.Spreadsheet;
 using TestNamespace;
 
-//using TestNamespace;
-
-//MyConfig.Init(deserializeObject);
-
 ITableDataSerializer tableDataSerializer = new TableDataSerializer();
-ConfigGenerator.ConfigGenerator configGenerator = new ConfigGenerator.ConfigGenerator(tableDataSerializer, "MyConfig", "TestNamespace");
+var typeRegistryFactory = new TypeRegistryFactory();
+ITableParser tableParser = new TableParser();
+ITableValidator tableValidator = new TableValidator(typeRegistryFactory);
+IArtifactWriter artifactWriter = new FileArtifactWriter();
 
-string spreadsheetId = "1JphtDv8GUoyqib2y1r_FkiF6JdlrCRg_GIxpWv7v-aQ";
-string credentialsFile = "credentials.json";
+ConfigGenerator.ConfigGenerator configGenerator = new ConfigGenerator.ConfigGenerator(
+    tableDataSerializer,
+    Environment.GetEnvironmentVariable("CONFIG_CLASS_NAME") ?? "MyConfig",
+    Environment.GetEnvironmentVariable("CONFIG_NAMESPACE") ?? "TestNamespace",
+    typeRegistryFactory,
+    tableParser,
+    artifactWriter);
+
+string spreadsheetId = Environment.GetEnvironmentVariable("SPREADSHEET_ID")
+    ?? "1JphtDv8GUoyqib2y1r_FkiF6JdlrCRg_GIxpWv7v-aQ";
+string credentialsFile = Environment.GetEnvironmentVariable("GOOGLE_CREDENTIALS_FILE")
+    ?? "credentials.json";
 
 ISpreadsheetDataSource spreadsheetDataSource = new GoogleSheetDataSource(credentialsFile, spreadsheetId);
-//ISpreadsheetDataSource spreadsheetDataSource = new ExcelFileDataSource("C:/Users/vuslystyi/Downloads/Config.xlsx");
 
-// 🛠 Отримуємо шлях до папки з `Main()`
-string projectDirectory = Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)
-    .Parent.Parent.Parent.FullName;
+string projectDirectory = Environment.GetEnvironmentVariable("PROJECT_DIRECTORY")
+    ?? Directory.GetParent(AppDomain.CurrentDomain.BaseDirectory)!.Parent!.Parent!.Parent!.FullName;
 
-// string projectDirectory = "C:\\_project\\ConfigGeneratorUnityProject\\Assets\\Scripts"; // Path to unity project
+string generatedFolder = Environment.GetEnvironmentVariable("GENERATED_FOLDER")
+    ?? Path.Combine(projectDirectory, "Generated");
 
-// 🗂 Створюємо шлях до підпапки `Generated`
-string generatedFolder = Path.Combine(projectDirectory, "Generated");
+bool printValidation = string.Equals(
+    Environment.GetEnvironmentVariable("PRINT_VALIDATION_ISSUES"),
+    "true",
+    StringComparison.OrdinalIgnoreCase);
 
-List<TableData> allTables = new List<TableData>();
-bool parseResult = await configGenerator.tryParseTables(
-    new List<ISpreadsheetDataSource>(){spreadsheetDataSource}, allTables);
+bool printGenerationMessages = string.Equals(
+    Environment.GetEnvironmentVariable("PRINT_GENERATION_MESSAGES"),
+    "true",
+    StringComparison.OrdinalIgnoreCase);
 
-if (parseResult) {
-    configGenerator.generateCode(allTables, generatedFolder);
-    configGenerator.generateJson(allTables, generatedFolder);
-    
-    MyConfig.Init(allTables);
+var pipeline = new ConfigGenerationPipeline(configGenerator, tableParser, tableValidator);
+var reporter = new PipelineRunReporter();
+PipelineRunResult runResult = await pipeline.GenerateDetailedAsync(new List<ISpreadsheetDataSource> { spreadsheetDataSource }, generatedFolder);
 
-    Debug.Print("adsf");
+if (printValidation)
+{
+    foreach (string line in reporter.BuildValidationLines(runResult))
+    {
+        Console.WriteLine(line);
+    }
+}
+
+if (printGenerationMessages)
+{
+    foreach (string line in reporter.BuildGenerationLines(runResult))
+    {
+        Console.WriteLine(line);
+    }
+}
+
+if (runResult.IsSuccess)
+{
+    MyConfig.Init(runResult.ParsedTablesResult.Tables);
 }

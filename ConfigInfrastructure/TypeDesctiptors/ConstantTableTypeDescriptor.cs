@@ -22,7 +22,7 @@ namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors
                 return false;
             }
 
-            value = TableDataUtilities.ExtractFieldName(value);
+            value = TableNameNormalizationService.ExtractFieldName(value);
 
             foreach (ConstantTableDataItem item in _tableData.Items)
             {

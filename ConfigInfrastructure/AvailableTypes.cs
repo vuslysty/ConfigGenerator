@@ -23,7 +23,6 @@ namespace ConfigGenerator.ConfigInfrastructure
         {
             if (GetTypeDescriptor(type.TypeName) != null)
             {
-                Console.WriteLine($"Warning: Type \"{type.TypeName}\" is already registered.");
                 return false;
             }
         

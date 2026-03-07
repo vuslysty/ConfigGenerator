@@ -50,7 +50,6 @@ namespace ConfigGenerator.ConfigInfrastructure.TypeDesctiptors
                 if (Parse(strValue, out var result)) {
                     array.SetValue(result, i);
                 } else {
-                    Console.WriteLine($"Error in parsing of array: {TypeName}. Can't parse value: {strValue}");
                     return false;
                 }
             }
