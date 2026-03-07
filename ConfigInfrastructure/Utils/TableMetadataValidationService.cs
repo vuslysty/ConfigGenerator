@@ -12,9 +12,11 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
         public static ValidationResult ValidateTablesMetadataDetailed(List<TableData> tableDataList)
         {
             ValidationResult result = new ValidationResult();
-            ValidateTablesByOverlapping(tableDataList, result);
-            ValidateTablesByNamePatterns(tableDataList, result);
-            ValidateTablesByDuplicatesInNames(tableDataList, result);
+
+            // Overlapping, name pattern and duplicate validations are already performed
+            // during per-page extraction (ExtractTablesFromPage). Re-running them here on
+            // merged multi-page data leads to false positives (e.g. overlap between pages)
+            // and duplicates existing checks.
             ValidateConstantValueCoercionWarnings(tableDataList, result);
             return result;
         }
