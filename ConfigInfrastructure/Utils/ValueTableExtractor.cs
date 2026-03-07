@@ -9,7 +9,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils;
 public static class ValueTableExtractor
 {
     private static readonly Regex ArrayTypeRegex = new Regex(
-        @"^([A-Za-z0-9_\.]+)\[([^\]]*)\]$",
+        @"^(.+?)\[(.*)\]$",
         RegexOptions.Compiled);
 
     public static bool IsArrayType(string typeName, out string specialDelimiter, out string cleanTypeName)
