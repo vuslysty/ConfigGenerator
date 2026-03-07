@@ -240,7 +240,11 @@ public static class ValueTableExtractor
                     (int row, string value) valueTuple = values[0];
                     string[] tokens = Tokenize(valueTuple.value, delimiter);
                     item.Values.AddRange(tokens);
-                    item.ValuesRows.Add(valueTuple.row);
+
+                    for (int i = 0; i < tokens.Length; i++)
+                    {
+                        item.ValuesRows.Add(valueTuple.row);
+                    }
                 }
             }
         }
