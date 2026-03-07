@@ -153,18 +153,10 @@ public static class ValueTableExtractor
         item.Type = TableCellReader.GetCellData(pageData, checkRow, typeCol);
 
         string valueData = TableCellReader.GetCellData(pageData, checkRow, valueCol);
-
         string commentData = TableCellReader.GetCellData(pageData, checkRow, commentCol);
 
-        item.Values = new List<string>()
-        {
-            valueData
-        };
-
-        item.ValuesRows = new List<int>()
-        {
-            checkRow
-        };
+        item.Values = new List<string>() { valueData };
+        item.ValuesRows = new List<int>() { checkRow };
 
         bool isArrayType = IsArrayType(item.Type, out string specialDelimiter, out string cleanTypeName);
 
@@ -176,13 +168,21 @@ public static class ValueTableExtractor
             if (item.ArrayType == ArrayType.OneCell)
             {
                 item.Values = new List<string>(Tokenize(valueData, specialDelimiter));
+                item.Comment = commentData;
             }
             else
             {
-                checkRow++;
+                item.Comment = commentData ?? string.Empty;
 
                 while (true)
                 {
+                    checkRow++;
+
+                    if (checkRow >= pageData.Count)
+                    {
+                        break;
+                    }
+
                     idData = TableCellReader.GetCellData(pageData, checkRow, idCol);
 
                     if (!string.IsNullOrWhiteSpace(idData))
@@ -190,38 +190,42 @@ public static class ValueTableExtractor
                         break;
                     }
 
-                    string typeData = TableCellReader.GetCellData(pageData, checkRow, typeCol);
-
-                    if (!string.IsNullOrWhiteSpace(typeData))
+                    if (string.IsNullOrWhiteSpace(item.Type))
                     {
-                        break;
+                        item.Type = TableCellReader.GetCellData(pageData, checkRow, typeCol);
                     }
 
                     valueData = TableCellReader.GetCellData(pageData, checkRow, valueCol);
 
-                    if (string.IsNullOrWhiteSpace(valueData))
+                    if (!string.IsNullOrWhiteSpace(valueData))
                     {
-                        break;
+                        item.Values.Add(valueData);
+                        item.ValuesRows.Add(checkRow);
                     }
 
                     commentData = TableCellReader.GetCellData(pageData, checkRow, commentCol);
 
                     if (!string.IsNullOrWhiteSpace(commentData))
                     {
-                        break;
+                        if (item.Comment == string.Empty)
+                        {
+                            item.Comment = commentData;
+                        }
+                        else
+                        {
+                            item.Comment += '\n';
+                            item.Comment += commentData;
+                        }
                     }
-
-                    item.Values.Add(valueData);
-                    item.ValuesRows.Add(checkRow);
-
-                    checkRow++;
                 }
             }
         }
+        else
+        {
+            item.Comment = commentData;
+        }
 
         item.Type = TableNameNormalizationService.ExtractTypeName(item.Type);
-
-        item.Comment = commentData;
         item.Height = checkRow - startRow + 1;
 
         return true;
