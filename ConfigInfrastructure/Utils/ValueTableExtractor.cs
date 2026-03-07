@@ -31,7 +31,7 @@ public static class ValueTableExtractor
 
         if (string.IsNullOrWhiteSpace(bracketContent))
         {
-            specialDelimiter = string.Empty;
+            specialDelimiter = null;
             return true;
         }
 
@@ -150,83 +150,113 @@ public static class ValueTableExtractor
         }
 
         item.Id = idData;
+
         item.Type = TableCellReader.GetCellData(pageData, checkRow, typeCol);
 
         string valueData = TableCellReader.GetCellData(pageData, checkRow, valueCol);
+        List<(int row, string value)> values = new();
+
+        if (!string.IsNullOrWhiteSpace(valueData))
+        {
+            values.Add((checkRow, valueData));
+        }
+
         string commentData = TableCellReader.GetCellData(pageData, checkRow, commentCol);
+        item.Comment = string.IsNullOrWhiteSpace(commentData) ? string.Empty : commentData;
 
-        item.Values = new List<string>() { valueData };
-        item.ValuesRows = new List<int>() { checkRow };
+        while (true)
+        {
+            checkRow++;
 
-        bool isArrayType = IsArrayType(item.Type, out string specialDelimiter, out string cleanTypeName);
+            if (checkRow >= pageData.Count)
+            {
+                break;
+            }
 
-        if (isArrayType)
+            idData = TableCellReader.GetCellData(pageData, checkRow, idCol);
+
+            if (!string.IsNullOrWhiteSpace(idData))
+            {
+                break;
+            }
+
+            if (string.IsNullOrWhiteSpace(item.Type))
+            {
+                item.Type = TableCellReader.GetCellData(pageData, checkRow, typeCol);
+            }
+
+            valueData = TableCellReader.GetCellData(pageData, checkRow, valueCol);
+
+            if (!string.IsNullOrWhiteSpace(valueData))
+            {
+                values.Add((checkRow, valueData));
+            }
+
+            commentData = TableCellReader.GetCellData(pageData, checkRow, commentCol);
+
+            if (!string.IsNullOrWhiteSpace(commentData))
+            {
+                if (item.Comment == string.Empty)
+                {
+                    item.Comment = commentData;
+                }
+                else
+                {
+                    item.Comment += '\n';
+                    item.Comment += commentData;
+                }
+            }
+        }
+
+        item.Height = checkRow - startRow;
+
+        if (string.IsNullOrWhiteSpace(item.Type))
+        {
+            item.Type = AvailableTypes.String.TypeName;
+        }
+
+        bool isArray = IsArrayType(item.Type, out string delimiter, out string cleanTypeName);
+
+        if (isArray)
         {
             item.Type = cleanTypeName;
-            item.ArrayType = string.IsNullOrWhiteSpace(specialDelimiter) ? ArrayType.Multicell : ArrayType.OneCell;
 
-            if (item.ArrayType == ArrayType.OneCell)
+            if (delimiter == null)
             {
-                item.Values = new List<string>(Tokenize(valueData, specialDelimiter));
-                item.Comment = commentData;
+                item.ArrayType = ArrayType.Multicell;
+
+                foreach ((int row, string value) valueTuple in values)
+                {
+                    item.Values.Add(valueTuple.value);
+                    item.ValuesRows.Add(valueTuple.row);
+                }
             }
             else
             {
-                item.Comment = commentData ?? string.Empty;
+                item.ArrayType = ArrayType.OneCell;
 
-                while (true)
+                if (values.Count > 0)
                 {
-                    checkRow++;
-
-                    if (checkRow >= pageData.Count)
-                    {
-                        break;
-                    }
-
-                    idData = TableCellReader.GetCellData(pageData, checkRow, idCol);
-
-                    if (!string.IsNullOrWhiteSpace(idData))
-                    {
-                        break;
-                    }
-
-                    if (string.IsNullOrWhiteSpace(item.Type))
-                    {
-                        item.Type = TableCellReader.GetCellData(pageData, checkRow, typeCol);
-                    }
-
-                    valueData = TableCellReader.GetCellData(pageData, checkRow, valueCol);
-
-                    if (!string.IsNullOrWhiteSpace(valueData))
-                    {
-                        item.Values.Add(valueData);
-                        item.ValuesRows.Add(checkRow);
-                    }
-
-                    commentData = TableCellReader.GetCellData(pageData, checkRow, commentCol);
-
-                    if (!string.IsNullOrWhiteSpace(commentData))
-                    {
-                        if (item.Comment == string.Empty)
-                        {
-                            item.Comment = commentData;
-                        }
-                        else
-                        {
-                            item.Comment += '\n';
-                            item.Comment += commentData;
-                        }
-                    }
+                    (int row, string value) valueTuple = values[0];
+                    string[] tokens = Tokenize(valueTuple.value, delimiter);
+                    item.Values.AddRange(tokens);
+                    item.ValuesRows.Add(valueTuple.row);
                 }
             }
         }
         else
         {
-            item.Comment = commentData;
+            item.ArrayType = ArrayType.None;
+
+            if (values.Count > 0)
+            {
+                (int row, string value) valueTuple = values[0];
+                item.Values.Add(valueTuple.value);
+                item.ValuesRows.Add(valueTuple.row);
+            }
         }
 
         item.Type = TableNameNormalizationService.ExtractTypeName(item.Type);
-        item.Height = checkRow - startRow + 1;
 
         return true;
     }
