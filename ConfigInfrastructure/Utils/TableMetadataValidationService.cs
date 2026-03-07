@@ -51,37 +51,18 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                     {
                         if (dataObject.Fields.Count == 0)
                         {
-                            result.AddError(
-                                "Data object has no fields while validating duplicate ids.",
-                                tableData.Name,
-                                dataObject.RowIndex + 1,
-                                IndexToColumn(databaseTableData.StartCol));
-                            continue;
+                            throw new InvalidOperationException(
+                                $"Regression detected: data object at row {dataObject.RowIndex + 1} in table \"{tableData.Name}\" has no fields.");
                         }
 
                         DataField idDataField = dataObject.Fields[0];
-
-                        if (idDataField.Values.Count == 0)
+                        if (idDataField.Values.Count == 0 || string.IsNullOrWhiteSpace(idDataField.Values[0]))
                         {
-                            result.AddError(
-                                "Data object has empty id value while validating duplicate ids.",
-                                tableData.Name,
-                                idDataField.RowIndex + 1,
-                                IndexToColumn(databaseTableData.StartCol));
-                            continue;
+                            throw new InvalidOperationException(
+                                $"Regression detected: empty id at row {idDataField.RowIndex + 1} in table \"{tableData.Name}\".");
                         }
 
                         string id = idDataField.Values[0];
-
-                        if (string.IsNullOrWhiteSpace(id))
-                        {
-                            result.AddError(
-                                "Data object has blank id value while validating duplicate ids.",
-                                tableData.Name,
-                                idDataField.RowIndex + 1,
-                                IndexToColumn(databaseTableData.StartCol));
-                            continue;
-                        }
 
                         if (idToRowMap.TryGetValue(id, out var row))
                         {
