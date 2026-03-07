@@ -186,64 +186,52 @@ public static class DatabaseTableExtractor
             ValuesRows = new List<int>()
         };
 
+        int height = 0;
         int checkRow = row;
 
-        if (field.ArrayType == ArrayType.OneCell)
+        while (checkRow < pageData.Count)
         {
+            if (height >= maxHeight)
+            {
+                break;
+            }
+
             string value = TableCellReader.GetCellData(pageData, checkRow, field.ColumnIndex);
 
-            if (string.IsNullOrWhiteSpace(value))
+            if (!string.IsNullOrWhiteSpace(value))
             {
-                dataField.Values = new List<string>();
-                dataField.ValuesRows = new List<int>();
-            }
-            else
-            {
-                dataField.Values = new List<string>(ValueTableExtractor.Tokenize(value, field.ArrayDelimiter));
+                if (value.Equals("END"))
+                {
+                    break;
+                }
+
+                if (field.ArrayType == ArrayType.Multicell)
+                {
+                    dataField.Values.Add(value);
+                }
+                else
+                {
+                    if (dataField.Values.Count > 0)
+                    {
+                        break;
+                    }
+
+                    if (field.ArrayType == ArrayType.OneCell)
+                    {
+                        string[] tokens = ValueTableExtractor.Tokenize(value, field.ArrayDelimiter);
+                        dataField.Values.AddRange(tokens);
+                    }
+                    else
+                    {
+                        dataField.Values.Add(value);
+                    }
+                }
+
                 dataField.ValuesRows.Add(checkRow);
             }
 
-            dataField.Height = 1;
-            return dataField;
-        }
-
-        List<string> values = new();
-
-        while (checkRow < row + maxHeight)
-        {
-            string value = TableCellReader.GetCellData(pageData, checkRow, field.ColumnIndex);
-
-            if (string.IsNullOrWhiteSpace(value) && field.ArrayType != ArrayType.None)
-            {
-                break;
-            }
-
-            values.Add(value);
-            dataField.ValuesRows.Add(checkRow);
-
-            if (field.ArrayType == ArrayType.None)
-            {
-                break;
-            }
-
             checkRow++;
-        }
-
-        if (field.ArrayType == ArrayType.Multicell)
-        {
-            while (values.Count > 0 && string.IsNullOrWhiteSpace(values[^1]))
-            {
-                values.RemoveAt(values.Count - 1);
-                dataField.ValuesRows.RemoveAt(dataField.ValuesRows.Count - 1);
-            }
-        }
-
-        dataField.Values = values;
-        int height = checkRow - row + 1;
-
-        if (height <= 0)
-        {
-            height = 1;
+            height++;
         }
 
         dataField.Height = height;
