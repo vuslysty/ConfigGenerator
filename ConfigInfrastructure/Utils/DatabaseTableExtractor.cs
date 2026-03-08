@@ -52,9 +52,14 @@ public static class DatabaseTableExtractor
                 checkCol++;
                 continue;
             }
-
-            fieldName = TableNameNormalizationService.ExtractFieldName(fieldName);
+            
             string[] fieldsPath = fieldName.Split('.');
+
+            for (int i = 0; i < fieldsPath.Length; i++)
+            {
+                string field = fieldsPath[i];
+                fieldsPath[i] = TableNameNormalizationService.ExtractFieldName(field);;
+            }
 
             if (!TableCellReader.TryGetCellData(pageData, startRow + 1, checkCol, out string typeName))
             {

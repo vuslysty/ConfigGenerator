@@ -71,3 +71,5 @@ if (runResult.IsSuccess)
 {
     MyConfig.Init(runResult.ParsedTablesResult.Tables);
 }
+
+Console.WriteLine(runResult.IsSuccess ? "Success" : "Failure");
