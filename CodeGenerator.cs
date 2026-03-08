@@ -14,22 +14,12 @@ public static class CodeGenerator
 {
     public static string GenerateConfigClasses(List<TableData> tables, string className, string namespaceName)
     {
-        AvailableTypes availableTypes = new AvailableTypes();
-        availableTypes.RegisterDefaultTypes();
+        return GenerateConfigClasses(tables, className, namespaceName, new Application.TypeRegistryFactory());
+    }
 
-        foreach (var tableData in tables)
-        {
-            switch (tableData)
-            {
-                case DatabaseTableData databaseTableData:
-                    availableTypes.Register(new DatabaseTableTypeDescriptor(databaseTableData));
-                    break;
-                
-                case ConstantTableData constantTableData:
-                    availableTypes.Register(new ConstantTableTypeDescriptor(constantTableData));
-                    break;
-            }
-        }
+    public static string GenerateConfigClasses(List<TableData> tables, string className, string namespaceName, Application.ITypeRegistryFactory typeRegistryFactory)
+    {
+        AvailableTypes availableTypes = typeRegistryFactory.CreateForTables(tables);
         
         List<ClassDeclarationSyntax> classes = new List<ClassDeclarationSyntax>();
         
