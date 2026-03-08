@@ -103,7 +103,7 @@
 - [x] Винести конфіг (`spreadsheetId`, `credentialsFile`, output path) у env/аргументи CLI.
 
 ### Етап 2 — виділення сервісів з колишнього `TableDataUtilities`
-- [x] `TableDataUtilities` прибрано; extraction/validation/normalization рознесено по сервісах (`TableExtractionEngine`, `TableExtractionService`, `TableDataValidationService`, `TableMetadataValidationService`, `TableNameNormalizationService`, `ConstantValueAssignmentService`, `DatabaseIntIdNormalizationService`).
+- [x] `TableDataUtilities` прибрано; extraction/validation/normalization рознесено по сервісах (`TableExtractionEngine`, `TableDataValidationService`, `TableMetadataValidationService`, `TableNameNormalizationService`, `IntIdNormalizationService`).
 - [x] Валідація повертає `ValidationResult` із деталями.
 - [x] Логування в домені прибрано: повідомлення збираються структуровано, друк виконується в presentation layer.
 - [x] Дорізати extraction-рівень до окремих parser-компонентів для value/database/constant кандидатів таблиць.

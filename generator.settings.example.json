@@ -1,0 +1,11 @@
+{
+  "ConfigClassName": "MyConfig",
+  "ConfigNamespace": "TestNamespace",
+  "SpreadsheetId": "1JphtDv8GUoyqib2y1r_FkiF6JdlrCRg_GIxpWv7v-aQ",
+  "CredentialsFile": "credentials.json",
+  "GeneratedFolder": "Generated",
+  "PrintValidationIssues": true,
+  "PrintGenerationMessages": true,
+  "Mode": "generate",
+  "JsonInputFile": "tables.json"
+}

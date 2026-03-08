@@ -49,8 +49,9 @@ public class ConfigGenerator
 
     public async Task GenerateCodeAsync(List<ISpreadsheetDataSource> spreadsheetSources, string outputFolderPath)
     {
-        List<TableData> allTables = await ParseTablesAsync(spreadsheetSources);
-        if (!_tableValidator.Validate(allTables).IsValid)
+        List<TableData>? allTables = await GetValidatedTablesAsync(spreadsheetSources);
+
+        if (allTables == null)
         {
             return;
         }
@@ -64,7 +65,7 @@ public class ConfigGenerator
         result.AddInfo("code", $"Starting code generation for {tables.Count} tables.");
 
         string code = CodeGenerator.GenerateConfigClasses(tables, _className, _namespaceName, _typeRegistryFactory);
-        string filePath = System.IO.Path.Combine(outputFolderPath, $"{_className}.cs");
+        string filePath = BuildArtifactPath(outputFolderPath, "cs");
         _artifactWriter.WriteText(filePath, code);
 
         result.AddInfo("code", $"Code generated to {filePath}.", filePath);
@@ -78,8 +79,9 @@ public class ConfigGenerator
 
     public async Task GenerateJsonAsync(List<ISpreadsheetDataSource> spreadsheetSources, string outputFolderPath)
     {
-        List<TableData> allTables = await ParseTablesAsync(spreadsheetSources);
-        if (!_tableValidator.Validate(allTables).IsValid)
+        List<TableData>? allTables = await GetValidatedTablesAsync(spreadsheetSources);
+
+        if (allTables == null)
         {
             return;
         }
@@ -93,7 +95,7 @@ public class ConfigGenerator
         result.AddInfo("json", $"Starting json generation for {tables.Count} tables.");
 
         string json = _tableDataSerializer.Serialize(tables);
-        string filePath = System.IO.Path.Combine(outputFolderPath, $"{_className}.json");
+        string filePath = BuildArtifactPath(outputFolderPath, "json");
         _artifactWriter.WriteText(filePath, json);
 
         result.AddInfo("json", $"Json generated to {filePath}.", filePath);
@@ -126,6 +128,23 @@ public class ConfigGenerator
         allTables.AddRange(parsedTables);
 
         return _tableValidator.Validate(allTables).IsValid;
+    }
+
+    private async Task<List<TableData>?> GetValidatedTablesAsync(List<ISpreadsheetDataSource> spreadsheetSources)
+    {
+        List<TableData> allTables = await ParseTablesAsync(spreadsheetSources);
+
+        if (!_tableValidator.Validate(allTables).IsValid)
+        {
+            return null;
+        }
+
+        return allTables;
+    }
+
+    private string BuildArtifactPath(string outputFolderPath, string extension)
+    {
+        return System.IO.Path.Combine(outputFolderPath, $"{_className}.{extension}");
     }
 
     [System.Obsolete("Use GenerateCode")]
