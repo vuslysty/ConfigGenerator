@@ -1,3 +1,5 @@
+using ConfigGenerator.Common;
+
 namespace ConfigGenerator.ConfigInfrastructure.Validation;
 
 public enum ValidationSeverity
@@ -6,13 +8,15 @@ public enum ValidationSeverity
     Warning
 }
 
-public sealed class ValidationIssue
+public sealed class ValidationIssue : IOperationMessage
 {
     public ValidationSeverity Severity { get; }
     public string Message { get; }
     public string? TableName { get; }
     public int? Row { get; }
     public string? Column { get; }
+
+    public bool IsError => Severity == ValidationSeverity.Error;
 
     public ValidationIssue(
         ValidationSeverity severity,

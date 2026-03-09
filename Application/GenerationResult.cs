@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using System.Linq;
+using ConfigGenerator.Common;
 
 namespace ConfigGenerator.Application;
 
@@ -10,12 +10,14 @@ public enum GenerationMessageSeverity
     Error
 }
 
-public sealed class GenerationMessage
+public sealed class GenerationMessage : IOperationMessage
 {
     public GenerationMessageSeverity Severity { get; }
     public string Step { get; }
     public string Message { get; }
     public string? OutputPath { get; }
+
+    public bool IsError => Severity == GenerationMessageSeverity.Error;
 
     public GenerationMessage(GenerationMessageSeverity severity, string step, string message, string? outputPath = null)
     {
@@ -26,17 +28,9 @@ public sealed class GenerationMessage
     }
 }
 
-public sealed class GenerationResult
+public sealed class GenerationResult : OperationResult<GenerationMessage>
 {
-    private readonly List<GenerationMessage> _messages = new List<GenerationMessage>();
-
-    public IReadOnlyList<GenerationMessage> Messages => _messages;
-    public bool IsSuccess => _messages.All(message => message.Severity != GenerationMessageSeverity.Error);
-
-    public void Add(GenerationMessage message)
-    {
-        _messages.Add(message);
-    }
+    public IReadOnlyList<GenerationMessage> Messages => MessageItems;
 
     public void AddInfo(string step, string message, string? outputPath = null)
     {
@@ -55,6 +49,6 @@ public sealed class GenerationResult
 
     public void Merge(GenerationResult another)
     {
-        _messages.AddRange(another._messages);
+        MergeFrom(another);
     }
 }
