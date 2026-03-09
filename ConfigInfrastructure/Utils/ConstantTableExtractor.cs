@@ -56,7 +56,7 @@ public static class ConstantTableExtractor
             constantTableData.Items.Add(dataItem);
         }
 
-        ConstantValueAssignmentService.AssignValues(constantTableData);
+        IntIdNormalizationService.NormalizeConstantValues(constantTableData);
 
         constantTableData.EndCol = startCol + 2;
         constantTableData.EndRow = constantTableData.Items.Count > 0 ? constantTableData.Items[^1].Row : startRow;

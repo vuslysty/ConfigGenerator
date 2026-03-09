@@ -46,7 +46,7 @@
 
 2. **Parsing + Validation (Domain/application services)**
    - `ITableParser` -> `List<TableData>`.
-   - `ITableValidator` -> `ValidationResult` (список помилок, warning, row/col).
+   - `ITableValidator` -> `OperationResult` (список повідомлень із severity і контекстом).
    - `ITypeRegistryFactory` -> єдина точка створення `AvailableTypes`.
 
 3. **Generation (Output builders)**
@@ -75,8 +75,8 @@
     /Tables
       (TableData та пов'язані моделі)
     /Validation
-      ValidationResult.cs
-      ValidationIssue.cs
+      OperationResult.cs
+      OperationMessage.cs
   /Infrastructure
     /Spreadsheet
       GoogleSheetDataSource.cs
@@ -103,8 +103,8 @@
 - [x] Винести конфіг (`spreadsheetId`, `credentialsFile`, output path) у env/аргументи CLI.
 
 ### Етап 2 — виділення сервісів з колишнього `TableDataUtilities`
-- [x] `TableDataUtilities` прибрано; extraction/validation/normalization рознесено по сервісах (`TableExtractionEngine`, `TableExtractionService`, `TableDataValidationService`, `TableMetadataValidationService`, `TableNameNormalizationService`, `ConstantValueAssignmentService`, `DatabaseIntIdNormalizationService`).
-- [x] Валідація повертає `ValidationResult` із деталями.
+- [x] `TableDataUtilities` прибрано; extraction/validation/normalization рознесено по сервісах (`TableExtractionEngine`, `TableDataValidationService`, `TableMetadataValidationService`, `TableNameNormalizationService`, `IntIdNormalizationService`).
+- [x] Валідація повертає `OperationResult` із деталями.
 - [x] Логування в домені прибрано: повідомлення збираються структуровано, друк виконується в presentation layer.
 - [x] Дорізати extraction-рівень до окремих parser-компонентів для value/database/constant кандидатів таблиць.
 - [x] Винести базові extraction-компоненти в окремі сервіси (`TableCandidateLocator`, `TableCellReader`, `ValueTableExtractor`, `ConstantTableExtractor`, `DatabaseTableExtractor`).
@@ -116,7 +116,7 @@
 
 ### Етап 4 — pipeline orchestration
 - [x] Створено `ConfigGenerationPipeline` з детальними результатами виконання.
-- [x] Додано `GenerationResult`/`PipelineRunResult` для прозорого статусу pipeline.
+- [x] Додано `PipelineRunResult` + спільний `OperationResult` для прозорого статусу pipeline.
 - [x] `Program.cs` використовується як composition root + керований вивід повідомлень.
 
 ### Етап 5 — тестованість

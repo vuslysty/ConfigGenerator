@@ -3,27 +3,25 @@ using System.Collections.Generic;
 using System.Numerics;
 using System.Text.RegularExpressions;
 using ConfigGenerator.ConfigInfrastructure.Data;
-using ConfigGenerator.ConfigInfrastructure.Validation;
+using ConfigGenerator.Common;
 
 namespace ConfigGenerator.ConfigInfrastructure.Utils
 {
     public static class TableMetadataValidationService
     {
-        public static ValidationResult ValidateTablesMetadataDetailed(List<TableData> tableDataList)
-        {
-            ValidationResult result = new ValidationResult();
+        private const string MetadataStep = OperationSteps.Validation.Metadata;
 
-            // Overlapping, name pattern and duplicate validations are already performed
-            // during per-page extraction (ExtractTablesFromPage). Re-running them here on
-            // merged multi-page data leads to false positives (e.g. overlap between pages)
-            // and duplicates existing checks.
-            ValidateConstantValueCoercionWarnings(tableDataList, result);
+        public static OperationResult ValidateTablesMetadataDetailed(List<TableData> tableDataList)
+        {
+            OperationResult result = new OperationResult(OperationResultIdentifiers.Validator);
+            ValidateTablesByNamePatterns(tableDataList, result);
+            ValidateTablesByDuplicatesInNames(tableDataList, result);
             return result;
         }
 
-        public static bool ValidateTablesByDuplicatesInNames(List<TableData> tableDataList, ValidationResult? validationResult = null)
+        public static bool ValidateTablesByDuplicatesInNames(List<TableData> tableDataList, OperationResult? validationResult = null)
         {
-            ValidationResult result = validationResult ?? new ValidationResult();
+            OperationResult result = validationResult ?? new OperationResult(OperationResultIdentifiers.Validator);
 
             foreach (var tableData in tableDataList)
             {
@@ -38,7 +36,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                                 $"Duplicate id \"{data.Id}\" found in rows {row + 1} and {data.Row + 1}.",
                                 tableData.Name,
                                 data.Row + 1,
-                                IndexToColumn(valueTableData.StartCol));
+                                ColumnIndexFormatter.ToColumnName(valueTableData.StartCol), step: MetadataStep);
                         }
                         else
                         {
@@ -72,7 +70,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                                 $"Duplicate id \"{id}\" found in rows {row + 1} and {idDataField.RowIndex + 1}.",
                                 tableData.Name,
                                 idDataField.RowIndex + 1,
-                                IndexToColumn(databaseTableData.StartCol));
+                                ColumnIndexFormatter.ToColumnName(databaseTableData.StartCol), step: MetadataStep);
                         }
                         else
                         {
@@ -93,7 +91,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                                 $"Duplicate name \"{data.Name}\" found in rows {row + 1} and {data.Row + 1}.",
                                 tableData.Name,
                                 data.Row + 1,
-                                IndexToColumn(constantTableData.StartCol));
+                                ColumnIndexFormatter.ToColumnName(constantTableData.StartCol), step: MetadataStep);
                         }
                         else
                         {
@@ -103,10 +101,10 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                 }
             }
 
-            return result.IsValid;
+            return result.IsSuccess;
         }
 
-        private static void IsValidFieldNodeByNameDuplicates(FieldNode fieldNode, DatabaseTableData databaseTableData, ValidationResult result)
+        private static void IsValidFieldNodeByNameDuplicates(FieldNode fieldNode, DatabaseTableData databaseTableData, OperationResult result)
         {
             Dictionary<string, FieldNode> fieldNameToFieldNodeMap = new();
             Dictionary<string, FieldNode> fieldInnerTypeToFieldNodeMap = new();
@@ -119,7 +117,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                         $"Duplicate field name \"{child.Name}\".",
                         databaseTableData.Name,
                         databaseTableData.StartRow + 1,
-                        $"{IndexToColumn(duplicateFieldNode.ColumnIndex)} and {IndexToColumn(child.ColumnIndex)}");
+                        $"{ColumnIndexFormatter.ToColumnName(duplicateFieldNode.ColumnIndex)} and {ColumnIndexFormatter.ToColumnName(child.ColumnIndex)}", step: MetadataStep);
                 }
                 else
                 {
@@ -137,7 +135,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                         $"Inner type \"{child.BaseType}\" cannot be the same as outer type.",
                         databaseTableData.Name,
                         databaseTableData.StartRow + 2,
-                        $"{IndexToColumn(fieldNode.ColumnIndex)} and {IndexToColumn(child.ColumnIndex)}");
+                        $"{ColumnIndexFormatter.ToColumnName(fieldNode.ColumnIndex)} and {ColumnIndexFormatter.ToColumnName(child.ColumnIndex)}", step: MetadataStep);
                 }
 
                 if (fieldInnerTypeToFieldNodeMap.TryGetValue(child.BaseType, out duplicateFieldNode))
@@ -146,7 +144,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                         $"Duplicate inner type name \"{child.BaseType}\".",
                         databaseTableData.Name,
                         databaseTableData.StartRow + 2,
-                        $"{IndexToColumn(duplicateFieldNode.ColumnIndex)} and {IndexToColumn(child.ColumnIndex)}");
+                        $"{ColumnIndexFormatter.ToColumnName(duplicateFieldNode.ColumnIndex)} and {ColumnIndexFormatter.ToColumnName(child.ColumnIndex)}", step: MetadataStep);
                 }
                 else
                 {
@@ -157,7 +155,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
             }
         }
 
-        private static void IsValidFieldNodeByNamePatterns(FieldNode fieldNode, DatabaseTableData databaseTableData, ValidationResult result)
+        private static void IsValidFieldNodeByNamePatterns(FieldNode fieldNode, DatabaseTableData databaseTableData, OperationResult result)
         {
             if (!IsValidTypeName(fieldNode.BaseType))
             {
@@ -165,7 +163,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                     $"Invalid type name \"{fieldNode.BaseType}\".",
                     databaseTableData.Name,
                     databaseTableData.StartRow + 1,
-                    IndexToColumn(fieldNode.ColumnIndex));
+                    ColumnIndexFormatter.ToColumnName(fieldNode.ColumnIndex), step: MetadataStep);
             }
 
             if (!IsValidFieldName(fieldNode.Name))
@@ -174,7 +172,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                     $"Invalid field name \"{fieldNode.Name}\".",
                     databaseTableData.Name,
                     databaseTableData.StartRow + 1,
-                    IndexToColumn(fieldNode.ColumnIndex));
+                    ColumnIndexFormatter.ToColumnName(fieldNode.ColumnIndex), step: MetadataStep);
             }
 
             foreach (FieldNode child in fieldNode.Children)
@@ -183,15 +181,15 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
             }
         }
 
-        public static bool ValidateTablesByNamePatterns(List<TableData> tableDataList, ValidationResult? validationResult = null)
+        public static bool ValidateTablesByNamePatterns(List<TableData> tableDataList, OperationResult? validationResult = null)
         {
-            ValidationResult result = validationResult ?? new ValidationResult();
+            OperationResult result = validationResult ?? new OperationResult(OperationResultIdentifiers.Validator);
 
             foreach (var tableData in tableDataList)
             {
                 if (!IsValidTypeName(tableData.Name))
                 {
-                    result.AddError($"Invalid table name \"{tableData.Name}\".", tableData.Name);
+                    result.AddError($"Invalid table name \"{tableData.Name}\".", tableData.Name, step: MetadataStep);
                 }
 
                 if (tableData is ValueTableData valueTableData)
@@ -204,7 +202,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                                 $"Invalid id name \"{data.Id}\".",
                                 tableData.Name,
                                 data.Row + 1,
-                                IndexToColumn(valueTableData.StartCol));
+                                ColumnIndexFormatter.ToColumnName(valueTableData.StartCol), step: MetadataStep);
                         }
 
                         if (!IsValidTypeName(data.Type))
@@ -213,7 +211,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                                 $"Invalid type name \"{data.Type}\".",
                                 tableData.Name,
                                 data.Row + 1,
-                                IndexToColumn(valueTableData.StartCol + 1));
+                                ColumnIndexFormatter.ToColumnName(valueTableData.StartCol + 1), step: MetadataStep);
                         }
                     }
                 }
@@ -234,47 +232,17 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                                 $"Invalid constant name \"{data.Name}\".",
                                 tableData.Name,
                                 data.Row + 1,
-                                IndexToColumn(constantTableData.StartCol));
+                                ColumnIndexFormatter.ToColumnName(constantTableData.StartCol), step: MetadataStep);
                         }
                     }
                 }
             }
 
-            return result.IsValid;
+            return result.IsSuccess;
         }
-
-
-        private static void ValidateConstantValueCoercionWarnings(List<TableData> tableDataList, ValidationResult result)
+        public static bool ValidateTablesByOverlapping(List<TableData> tableDataList, OperationResult? validationResult = null)
         {
-            foreach (TableData tableData in tableDataList)
-            {
-                if (tableData is not ConstantTableData constantTableData)
-                {
-                    continue;
-                }
-
-                foreach (ConstantTableDataItem item in constantTableData.Items)
-                {
-                    if (string.IsNullOrWhiteSpace(item.StringValue))
-                    {
-                        continue;
-                    }
-
-                    if (!AvailableTypes.Int.Parse(item.StringValue, out _))
-                    {
-                        result.AddWarning(
-                            $"Constant value \"{item.StringValue}\" for \"{item.Name}\" is invalid; fallback auto value \"{item.Value}\" was assigned.",
-                            constantTableData.Name,
-                            item.Row + 1,
-                            IndexToColumn(constantTableData.StartCol + 1));
-                    }
-                }
-            }
-        }
-
-        public static bool ValidateTablesByOverlapping(List<TableData> tableDataList, ValidationResult? validationResult = null)
-        {
-            ValidationResult result = validationResult ?? new ValidationResult();
+            OperationResult result = validationResult ?? new OperationResult(OperationResultIdentifiers.Validator);
             List<(TableData, TableData)> overlappedTables = new();
 
             foreach (var table1 in tableDataList)
@@ -298,10 +266,10 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
 
             foreach (var tables in overlappedTables)
             {
-                result.AddError($"Tables \"{tables.Item1.Name}\" and \"{tables.Item2.Name}\" overlap.");
+                result.AddError($"Tables \"{tables.Item1.Name}\" and \"{tables.Item2.Name}\" overlap.", step: MetadataStep);
             }
 
-            return result.IsValid;
+            return result.IsSuccess;
         }
 
         private static bool AreTablesOverlap(TableData table1, TableData table2)
@@ -335,15 +303,5 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
             return Regex.IsMatch(value, fieldNamePattern);
         }
 
-        private static string IndexToColumn(int number)
-        {
-            string columnName = "";
-            while (number >= 0)
-            {
-                columnName = (char)('A' + (number % 26)) + columnName;
-                number = (number / 26) - 1;
-            }
-            return columnName;
-        }
     }
 }
