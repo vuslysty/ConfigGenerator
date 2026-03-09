@@ -105,7 +105,7 @@ public static class DatabaseTableExtractor
 
         if (isIntTypeId)
         {
-            DatabaseIntIdNormalizationService.Normalize(tableData);
+            IntIdNormalizationService.NormalizeDatabaseIds(tableData);
         }
 
         if (tableData.DataObjects.Count > 0)
@@ -223,7 +223,7 @@ public static class DatabaseTableExtractor
 
                     if (field.ArrayType == ArrayType.OneCell)
                     {
-                        string[] tokens = ValueTableExtractor.Tokenize(value, field.ArrayDelimiter);
+                        string[] tokens = ValueTypeParsingService.TokenizeArrayValue(value, field.ArrayDelimiter);
                         dataField.Values.AddRange(tokens);
                     }
                     else
@@ -314,7 +314,7 @@ public static class DatabaseTableExtractor
                 typeDef = AvailableTypes.String.TypeName;
             }
 
-            bool isArray = ValueTableExtractor.IsArrayType(typeDef, out string delimiter, out string cleanTypeName);
+            bool isArray = ValueTypeParsingService.TryParseArrayType(typeDef, out string? delimiter, out string? cleanTypeName);
 
             if (isArray)
             {

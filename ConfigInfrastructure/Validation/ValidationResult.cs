@@ -1,32 +1,25 @@
 using System.Collections.Generic;
-using System.Linq;
+using ConfigGenerator.Common;
 
 namespace ConfigGenerator.ConfigInfrastructure.Validation;
 
-public sealed class ValidationResult
+public sealed class ValidationResult : OperationResult<ValidationIssue>
 {
-    private readonly List<ValidationIssue> _issues = new List<ValidationIssue>();
-
-    public IReadOnlyList<ValidationIssue> Issues => _issues;
-    public bool IsValid => _issues.All(issue => issue.Severity != ValidationSeverity.Error);
-
-    public void Add(ValidationIssue issue)
-    {
-        _issues.Add(issue);
-    }
+    public IReadOnlyList<ValidationIssue> Issues => MessageItems;
+    public bool IsValid => IsSuccess;
 
     public void AddError(string message, string? tableName = null, int? row = null, string? column = null)
     {
-        Add(new ValidationIssue(ValidationSeverity.Error, message, tableName, row, column));
+        Add(new ValidationIssue(MessageSeverity.Error, message, tableName, row, column));
     }
 
     public void AddWarning(string message, string? tableName = null, int? row = null, string? column = null)
     {
-        Add(new ValidationIssue(ValidationSeverity.Warning, message, tableName, row, column));
+        Add(new ValidationIssue(MessageSeverity.Warning, message, tableName, row, column));
     }
 
     public void Merge(ValidationResult another)
     {
-        _issues.AddRange(another._issues);
+        MergeFrom(another);
     }
 }

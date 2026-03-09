@@ -31,7 +31,7 @@ public sealed class TableParser : ITableParser
                 continue;
             }
 
-            if (TableExtractionService.TryExtractTables(page.name, page.values, out List<TableData> resultTables))
+            if (TableExtractionEngine.ExtractTablesFromPage(page.name, page.values, out List<TableData> resultTables))
             {
                 allTables.AddRange(resultTables);
             }

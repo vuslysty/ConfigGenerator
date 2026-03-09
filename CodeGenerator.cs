@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using CaseConverter;
@@ -12,6 +13,17 @@ namespace ConfigGenerator;
 
 public static class CodeGenerator
 {
+    private static readonly IReadOnlyDictionary<Type, Func<TableData, AvailableTypes, ClassDeclarationSyntax>> TableClassGenerators =
+        new Dictionary<Type, Func<TableData, AvailableTypes, ClassDeclarationSyntax>>
+        {
+            [typeof(ValueTableData)] = static (table, availableTypes) =>
+                GenerateValueTableClass((ValueTableData)table, availableTypes),
+            [typeof(DatabaseTableData)] = static (table, availableTypes) =>
+                GenerateDatabaseTableClass((DatabaseTableData)table, availableTypes),
+            [typeof(ConstantTableData)] = static (table, _) =>
+                GenerateConstantTableClass((ConstantTableData)table),
+        };
+
     public static string GenerateConfigClasses(List<TableData> tables, string className, string namespaceName)
     {
         return GenerateConfigClasses(tables, className, namespaceName, new Application.TypeRegistryFactory());
@@ -20,27 +32,17 @@ public static class CodeGenerator
     public static string GenerateConfigClasses(List<TableData> tables, string className, string namespaceName, Application.ITypeRegistryFactory typeRegistryFactory)
     {
         AvailableTypes availableTypes = typeRegistryFactory.CreateForTables(tables);
-        
-        List<ClassDeclarationSyntax> classes = new List<ClassDeclarationSyntax>();
-        
-        classes.Add(GenerateConfigClass(tables, className));
 
-        foreach (var table in tables)
+        List<ClassDeclarationSyntax> classes = new()
         {
-            if (table is ValueTableData valueTableData)
-            {
-                classes.Add(GenerateValueTableClass(valueTableData, availableTypes));
-            }
-            else if (table is DatabaseTableData databaseTableData)
-            {
-                classes.Add(GenerateDatabaseTableClass(databaseTableData, availableTypes));
-            }
-            else if (table is ConstantTableData constantTableData)
-            {
-                classes.Add(GenerateConstantTableClass(constantTableData));
-            }
+            GenerateConfigClass(tables, className),
+        };
+
+        foreach (TableData table in tables)
+        {
+            classes.Add(GenerateTableClass(table, availableTypes));
         }
-        
+
         var namespaceDecl = SyntaxFactory
             .NamespaceDeclaration(SyntaxFactory.ParseName(namespaceName))
             .AddMembers(classes.ToArray());
@@ -53,8 +55,17 @@ public static class CodeGenerator
                 SyntaxFactory.UsingDirective(SyntaxFactory.ParseName("System.Collections.Generic")))
             .AddMembers(namespaceDecl);
 
-        var formattedCode = syntaxTree.NormalizeWhitespace().ToFullString();
-        return formattedCode;
+        return syntaxTree.NormalizeWhitespace().ToFullString();
+    }
+
+    private static ClassDeclarationSyntax GenerateTableClass(TableData tableData, AvailableTypes availableTypes)
+    {
+        if (TableClassGenerators.TryGetValue(tableData.GetType(), out Func<TableData, AvailableTypes, ClassDeclarationSyntax>? generator))
+        {
+            return generator(tableData, availableTypes);
+        }
+
+        throw new InvalidOperationException($"Unsupported table type for code generation: {tableData.GetType().Name}");
     }
 
     private static ClassDeclarationSyntax GenerateValueTableClass(ValueTableData valueTableData, AvailableTypes availableTypes)
@@ -63,20 +74,20 @@ public static class CodeGenerator
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
             .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName("ValueConfigTable")));
 
-        List<MemberDeclarationSyntax> properties = new List<MemberDeclarationSyntax>();
-        
-        foreach (var dataItem in valueTableData.Items)
+        List<MemberDeclarationSyntax> properties = new();
+
+        foreach (ValueTableDataItem dataItem in valueTableData.Items)
         {
             var typeDescriptor = availableTypes.GetTypeDescriptor(dataItem.Type);
 
             string typeName = typeDescriptor.RealTypeName;
 
-            if (dataItem.ArrayType.IsArray()) {
+            if (dataItem.ArrayType.IsArray())
+            {
                 typeName = $"{typeName}[]";
             }
-            
-            var property = CreateProperty(typeName, dataItem.Id, dataItem.Comment);
-            properties.Add(property);
+
+            properties.Add(CreateProperty(typeName, dataItem.Id, dataItem.Comment));
         }
 
         return valueTableClass.AddMembers(properties.ToArray());
@@ -87,9 +98,9 @@ public static class CodeGenerator
         var valueTableClass = SyntaxFactory.ClassDeclaration(constantTableData.Name)
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword));
 
-        List<MemberDeclarationSyntax> constants = new List<MemberDeclarationSyntax>();
+        List<MemberDeclarationSyntax> constants = new();
 
-        foreach (var dataItem in constantTableData.Items)
+        foreach (ConstantTableDataItem dataItem in constantTableData.Items)
         {
             var constantField = SyntaxFactory.FieldDeclaration(
                     SyntaxFactory.VariableDeclaration(SyntaxFactory.ParseTypeName("int"))
@@ -104,7 +115,7 @@ public static class CodeGenerator
             {
                 constantField = constantField.WithLeadingTrivia(CreateXmlComment(dataItem.Comment));
             }
-            
+
             constants.Add(constantField);
         }
 
@@ -116,91 +127,67 @@ public static class CodeGenerator
         var newClass = SyntaxFactory.ClassDeclaration(fieldNode.BaseType)
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword));
 
-        var properties = new List<MemberDeclarationSyntax>();
-        var innerClasses = new List<MemberDeclarationSyntax>();
-        
-        foreach (FieldNode child in fieldNode.Children)
-        {
-            if (child.Children.Count > 0)
-            {
-                var property = CreateProperty($"List<{child.BaseType}>", child.Name);
-                
-                properties.Add(property);
-                
-                var innerClass = GenerateClass(child, availableTypes);
-                innerClasses.Add(innerClass);
-            }
-            else
-            {
-                var fieldTypeDescriptor = availableTypes.GetTypeDescriptor(child.BaseType);
-                
-                string typeName = fieldTypeDescriptor.RealTypeName;
+        GenerateFieldMembers(fieldNode.Children, availableTypes, out List<MemberDeclarationSyntax> properties, out List<MemberDeclarationSyntax> innerClasses);
 
-                if (child.ArrayType.IsArray()) {
-                    typeName = $"{typeName}[]";
-                }
-                
-                var property = CreateProperty(typeName, child.Name, child.Comment);
-            
-                properties.Add(property);
-            }
-        }
-        
-        newClass = newClass
+        return newClass
             .AddMembers(innerClasses.ToArray())
             .AddMembers(properties.ToArray());
-        
-        return newClass;
     }
-    
-    private static ClassDeclarationSyntax GenerateDatabaseTableClass(DatabaseTableData databaseTableData, AvailableTypes availableTypes)
-    {
-        var properties = new List<MemberDeclarationSyntax>();
-        var innerClasses = new List<MemberDeclarationSyntax>();
 
-        // We started from 1 not 0 because we skip Id field
-        for (var i = 1; i < databaseTableData.RootFieldNode.Children.Count; i++)
+    private static void GenerateFieldMembers(
+        IEnumerable<FieldNode> fieldNodes,
+        AvailableTypes availableTypes,
+        out List<MemberDeclarationSyntax> properties,
+        out List<MemberDeclarationSyntax> innerClasses)
+    {
+        properties = new List<MemberDeclarationSyntax>();
+        innerClasses = new List<MemberDeclarationSyntax>();
+
+        foreach (FieldNode child in fieldNodes)
         {
-            var child = databaseTableData.RootFieldNode.Children[i];
             if (child.Children.Count > 0)
             {
-                var property = CreateProperty($"List<{child.BaseType}>", child.Name);
-
-                properties.Add(property);
-
-                var innerClass = GenerateClass(child, availableTypes);
-                innerClasses.Add(innerClass);
+                properties.Add(CreateProperty($"List<{child.BaseType}>", child.Name));
+                innerClasses.Add(GenerateClass(child, availableTypes));
+                continue;
             }
-            else
-            {
-                var fieldTypeDescriptor = availableTypes.GetTypeDescriptor(child.BaseType);
-                
-                string typeName = fieldTypeDescriptor.RealTypeName;
 
-                if (child.ArrayType.IsArray()) {
-                    typeName = $"{typeName}[]";
-                }
-                
-                var property = CreateProperty(typeName, child.Name, child.Comment);
-
-                properties.Add(property);
-            }
+            properties.Add(CreateFieldProperty(child, availableTypes));
         }
+    }
+
+    private static PropertyDeclarationSyntax CreateFieldProperty(FieldNode fieldNode, AvailableTypes availableTypes)
+    {
+        var fieldTypeDescriptor = availableTypes.GetTypeDescriptor(fieldNode.BaseType);
+
+        string typeName = fieldTypeDescriptor.RealTypeName;
+
+        if (fieldNode.ArrayType.IsArray())
+        {
+            typeName = $"{typeName}[]";
+        }
+
+        return CreateProperty(typeName, fieldNode.Name, fieldNode.Comment);
+    }
+
+    private static ClassDeclarationSyntax GenerateDatabaseTableClass(DatabaseTableData databaseTableData, AvailableTypes availableTypes)
+    {
+        GenerateFieldMembers(databaseTableData.RootFieldNode.Children.Skip(1), availableTypes, out List<MemberDeclarationSyntax> properties, out List<MemberDeclarationSyntax> innerClasses);
 
         string idType = databaseTableData.IdType;
         TypeDescriptor? idTypeDescription = availableTypes.GetTypeDescriptor(idType);
-        
+
         ClassDeclarationSyntax itemMainClass = SyntaxFactory.ClassDeclaration("Item")
             .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName($"ConfigTableItem<{idTypeDescription.RealTypeName}>")))
             .AddMembers(properties.ToArray());
-        
-        ClassDeclarationSyntax itemPartialClass = null;
+
+        ClassDeclarationSyntax? itemPartialClass = null;
 
         if (innerClasses.Count > 0)
         {
             itemMainClass = itemMainClass.AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword),
                 SyntaxFactory.Token(SyntaxKind.PartialKeyword));
-            
+
             itemPartialClass = SyntaxFactory.ClassDeclaration("Item")
                 .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword),
                     SyntaxFactory.Token(SyntaxKind.PartialKeyword))
@@ -210,17 +197,18 @@ public static class CodeGenerator
         {
             itemMainClass = itemMainClass.AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword));
         }
-        
+
         var databaseTableClass = SyntaxFactory.ClassDeclaration(databaseTableData.Name)
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword))
             .AddBaseListTypes(SyntaxFactory.SimpleBaseType(SyntaxFactory.ParseTypeName(
                 $"DatabaseConfigTable<{databaseTableData.Name}.Item, {idTypeDescription.RealTypeName}>")))
             .AddMembers(itemMainClass);
 
-        if (itemPartialClass != null) {
+        if (itemPartialClass != null)
+        {
             databaseTableClass = databaseTableClass.AddMembers(itemPartialClass);
         }
-        
+
         return databaseTableClass;
     }
 
@@ -234,19 +222,15 @@ public static class CodeGenerator
             SyntaxFactory.VariableDeclaration(SyntaxFactory.ParseTypeName(className))
                 .AddVariables(SyntaxFactory.VariableDeclarator("_instance")))
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PrivateKeyword), SyntaxFactory.Token(SyntaxKind.StaticKeyword));
-        
-        configClass = configClass.AddMembers(instanceField);
-        
-        foreach (var table in tables)
-        {
-            if (table is ConstantTableData) {
-                continue;
-            }
-            
-            var fieldName = $"_{table.Name.ToCamelCase()}";
 
-            var tableType = SyntaxFactory.ParseTypeName(table.Name);
-            
+        configClass = configClass.AddMembers(instanceField);
+
+        foreach (TableData table in tables.Where(ShouldGenerateConfigAccessor))
+        {
+            string fieldName = $"_{table.Name.ToCamelCase()}";
+
+            TypeSyntax tableType = SyntaxFactory.ParseTypeName(table.Name);
+
             var fieldDeclaration = SyntaxFactory.VariableDeclaration(tableType)
                 .AddVariables(SyntaxFactory.VariableDeclarator(fieldName)
                     .WithInitializer(SyntaxFactory.EqualsValueClause(
@@ -259,21 +243,24 @@ public static class CodeGenerator
             var property = SyntaxFactory.PropertyDeclaration(tableType, table.Name)
                 .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword), SyntaxFactory.Token(SyntaxKind.StaticKeyword))
                 .WithExpressionBody(SyntaxFactory.ArrowExpressionClause(
-                        SyntaxFactory.MemberAccessExpression(
-                            SyntaxKind.SimpleMemberAccessExpression,
-                            SyntaxFactory.InvocationExpression(SyntaxFactory.IdentifierName("GetConfigs")),
-                            SyntaxFactory.IdentifierName(fieldName))))
+                    SyntaxFactory.MemberAccessExpression(
+                        SyntaxKind.SimpleMemberAccessExpression,
+                        SyntaxFactory.InvocationExpression(SyntaxFactory.IdentifierName("GetConfigs")),
+                        SyntaxFactory.IdentifierName(fieldName))))
                 .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken));
-            
+
             configClass = configClass.AddMembers(field, property);
         }
-        
-        configClass = configClass.AddMembers(
+
+        return configClass.AddMembers(
             GenerateGetConfigsMethod(className),
             GenerateInitMethod([("string", "jsonData"), ("ITableDataSerializer", "tableDataSerializer")], className),
             GenerateInitMethod([("List<TableData>", "tables")], className));
-        
-        return configClass;
+    }
+
+    private static bool ShouldGenerateConfigAccessor(TableData tableData)
+    {
+        return tableData is not ConstantTableData;
     }
 
     private static IfStatementSyntax GenerateSingletonInitialization(string className)
@@ -294,7 +281,7 @@ public static class CodeGenerator
             )
         );
     }
-    
+
     private static MethodDeclarationSyntax GenerateGetConfigsMethod(string configTypeName)
     {
         return SyntaxFactory.MethodDeclaration(SyntaxFactory.IdentifierName(configTypeName), "GetConfigs")
@@ -338,7 +325,7 @@ public static class CodeGenerator
                 SyntaxFactory.ReturnStatement(SyntaxFactory.IdentifierName("_instance"))
             ));
     }
-    
+
     public static MethodDeclarationSyntax GenerateInitMethod(
         List<(string type, string name)> parameters, string configsClassName)
     {
@@ -349,18 +336,18 @@ public static class CodeGenerator
         for (int i = 0; i < parameters.Count; i++)
         {
             (string type, string name) parameter = parameters[i];
-            
+
             parameterSyntaxItems[i] = SyntaxFactory.Parameter(SyntaxFactory.Identifier(parameter.name))
                 .WithType(SyntaxFactory.ParseTypeName(parameter.type));
         }
 
         return SyntaxFactory.MethodDeclaration(
-                SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)), 
+                SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.VoidKeyword)),
                 "Init")
             .AddModifiers(SyntaxFactory.Token(SyntaxKind.PublicKeyword), SyntaxFactory.Token(SyntaxKind.StaticKeyword))
             .AddParameterListParameters(parameterSyntaxItems)
             .WithBody(SyntaxFactory.Block(
-                GenerateSingletonInitialization(configsClassName), 
+                GenerateSingletonInitialization(configsClassName),
                 SyntaxFactory.ExpressionStatement(
                     SyntaxFactory.InvocationExpression(
                         SyntaxFactory.MemberAccessExpression(SyntaxKind.SimpleMemberAccessExpression,
@@ -382,7 +369,7 @@ public static class CodeGenerator
                 {
                     SyntaxFactory.AccessorDeclaration(SyntaxKind.GetAccessorDeclaration)
                         .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken)),
-                    
+
                     SyntaxFactory.AccessorDeclaration(SyntaxKind.SetAccessorDeclaration)
                         .AddModifiers(SyntaxFactory.Token(SyntaxKind.PrivateKeyword))
                         .WithSemicolonToken(SyntaxFactory.Token(SyntaxKind.SemicolonToken))
@@ -395,7 +382,7 @@ public static class CodeGenerator
 
         return property;
     }
-    
+
     private static SyntaxTriviaList CreateXmlComment(string commentText)
     {
         var lines = commentText.Split('\n')
@@ -404,8 +391,10 @@ public static class CodeGenerator
             .Append("/// </summary>");
 
         var triviaList = lines
-            .SelectMany(line => new[] { 
-                SyntaxFactory.Comment(line) })
+            .SelectMany(line => new[]
+            {
+                SyntaxFactory.Comment(line)
+            })
             .Prepend(SyntaxFactory.DisabledText("\n"))
             .ToArray();
 

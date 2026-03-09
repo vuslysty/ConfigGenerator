@@ -1,21 +1,19 @@
+using ConfigGenerator.Common;
+
 namespace ConfigGenerator.ConfigInfrastructure.Validation;
 
-public enum ValidationSeverity
+public sealed class ValidationIssue : IOperationMessage
 {
-    Error,
-    Warning
-}
-
-public sealed class ValidationIssue
-{
-    public ValidationSeverity Severity { get; }
+    public MessageSeverity Severity { get; }
     public string Message { get; }
     public string? TableName { get; }
     public int? Row { get; }
     public string? Column { get; }
 
+    public bool IsError => Severity == MessageSeverity.Error;
+
     public ValidationIssue(
-        ValidationSeverity severity,
+        MessageSeverity severity,
         string message,
         string? tableName = null,
         int? row = null,

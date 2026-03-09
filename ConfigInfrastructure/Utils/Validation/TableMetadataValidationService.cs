@@ -38,7 +38,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                                 $"Duplicate id \"{data.Id}\" found in rows {row + 1} and {data.Row + 1}.",
                                 tableData.Name,
                                 data.Row + 1,
-                                IndexToColumn(valueTableData.StartCol));
+                                ColumnIndexFormatter.ToColumnName(valueTableData.StartCol));
                         }
                         else
                         {
@@ -72,7 +72,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                                 $"Duplicate id \"{id}\" found in rows {row + 1} and {idDataField.RowIndex + 1}.",
                                 tableData.Name,
                                 idDataField.RowIndex + 1,
-                                IndexToColumn(databaseTableData.StartCol));
+                                ColumnIndexFormatter.ToColumnName(databaseTableData.StartCol));
                         }
                         else
                         {
@@ -93,7 +93,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                                 $"Duplicate name \"{data.Name}\" found in rows {row + 1} and {data.Row + 1}.",
                                 tableData.Name,
                                 data.Row + 1,
-                                IndexToColumn(constantTableData.StartCol));
+                                ColumnIndexFormatter.ToColumnName(constantTableData.StartCol));
                         }
                         else
                         {
@@ -119,7 +119,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                         $"Duplicate field name \"{child.Name}\".",
                         databaseTableData.Name,
                         databaseTableData.StartRow + 1,
-                        $"{IndexToColumn(duplicateFieldNode.ColumnIndex)} and {IndexToColumn(child.ColumnIndex)}");
+                        $"{ColumnIndexFormatter.ToColumnName(duplicateFieldNode.ColumnIndex)} and {ColumnIndexFormatter.ToColumnName(child.ColumnIndex)}");
                 }
                 else
                 {
@@ -137,7 +137,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                         $"Inner type \"{child.BaseType}\" cannot be the same as outer type.",
                         databaseTableData.Name,
                         databaseTableData.StartRow + 2,
-                        $"{IndexToColumn(fieldNode.ColumnIndex)} and {IndexToColumn(child.ColumnIndex)}");
+                        $"{ColumnIndexFormatter.ToColumnName(fieldNode.ColumnIndex)} and {ColumnIndexFormatter.ToColumnName(child.ColumnIndex)}");
                 }
 
                 if (fieldInnerTypeToFieldNodeMap.TryGetValue(child.BaseType, out duplicateFieldNode))
@@ -146,7 +146,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                         $"Duplicate inner type name \"{child.BaseType}\".",
                         databaseTableData.Name,
                         databaseTableData.StartRow + 2,
-                        $"{IndexToColumn(duplicateFieldNode.ColumnIndex)} and {IndexToColumn(child.ColumnIndex)}");
+                        $"{ColumnIndexFormatter.ToColumnName(duplicateFieldNode.ColumnIndex)} and {ColumnIndexFormatter.ToColumnName(child.ColumnIndex)}");
                 }
                 else
                 {
@@ -165,7 +165,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                     $"Invalid type name \"{fieldNode.BaseType}\".",
                     databaseTableData.Name,
                     databaseTableData.StartRow + 1,
-                    IndexToColumn(fieldNode.ColumnIndex));
+                    ColumnIndexFormatter.ToColumnName(fieldNode.ColumnIndex));
             }
 
             if (!IsValidFieldName(fieldNode.Name))
@@ -174,7 +174,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                     $"Invalid field name \"{fieldNode.Name}\".",
                     databaseTableData.Name,
                     databaseTableData.StartRow + 1,
-                    IndexToColumn(fieldNode.ColumnIndex));
+                    ColumnIndexFormatter.ToColumnName(fieldNode.ColumnIndex));
             }
 
             foreach (FieldNode child in fieldNode.Children)
@@ -204,7 +204,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                                 $"Invalid id name \"{data.Id}\".",
                                 tableData.Name,
                                 data.Row + 1,
-                                IndexToColumn(valueTableData.StartCol));
+                                ColumnIndexFormatter.ToColumnName(valueTableData.StartCol));
                         }
 
                         if (!IsValidTypeName(data.Type))
@@ -213,7 +213,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                                 $"Invalid type name \"{data.Type}\".",
                                 tableData.Name,
                                 data.Row + 1,
-                                IndexToColumn(valueTableData.StartCol + 1));
+                                ColumnIndexFormatter.ToColumnName(valueTableData.StartCol + 1));
                         }
                     }
                 }
@@ -234,7 +234,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                                 $"Invalid constant name \"{data.Name}\".",
                                 tableData.Name,
                                 data.Row + 1,
-                                IndexToColumn(constantTableData.StartCol));
+                                ColumnIndexFormatter.ToColumnName(constantTableData.StartCol));
                         }
                     }
                 }
@@ -266,7 +266,7 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
                             $"Constant value \"{item.StringValue}\" for \"{item.Name}\" is invalid; fallback auto value \"{item.Value}\" was assigned.",
                             constantTableData.Name,
                             item.Row + 1,
-                            IndexToColumn(constantTableData.StartCol + 1));
+                            ColumnIndexFormatter.ToColumnName(constantTableData.StartCol + 1));
                     }
                 }
             }
@@ -335,15 +335,5 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
             return Regex.IsMatch(value, fieldNamePattern);
         }
 
-        private static string IndexToColumn(int number)
-        {
-            string columnName = "";
-            while (number >= 0)
-            {
-                columnName = (char)('A' + (number % 26)) + columnName;
-                number = (number / 26) - 1;
-            }
-            return columnName;
-        }
     }
 }
