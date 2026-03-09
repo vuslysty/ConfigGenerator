@@ -101,9 +101,5 @@ namespace ConfigGenerator.ConfigInfrastructure.Utils
             return true;
         }
 
-        public static bool ValidateTableTypesAndValues(TableData tableData, AvailableTypes availableTypes)
-        {
-            return TableDataValidationService.ValidateTableTypesAndValues(tableData, availableTypes);
-        }
     }
 }

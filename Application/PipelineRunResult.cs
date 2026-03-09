@@ -1,17 +1,32 @@
-using ConfigGenerator.ConfigInfrastructure.Validation;
+using System.Collections.Generic;
+using ConfigGenerator.Common;
+using ConfigGenerator.ConfigInfrastructure.Data;
 
 namespace ConfigGenerator.Application;
 
 public sealed class PipelineRunResult
 {
-    public ParsedTablesResult ParsedTablesResult { get; }
-    public GenerationResult GenerationResult { get; }
+    public List<TableData> Tables { get; }
+    public OperationResult ValidationResult { get; }
+    public OperationResult GenerationResult { get; }
 
-    public bool IsSuccess => ParsedTablesResult.ValidationResult.IsValid && GenerationResult.IsSuccess;
+    public bool IsSuccess => ValidationResult.IsSuccess && GenerationResult.IsSuccess;
 
-    public PipelineRunResult(ParsedTablesResult parsedTablesResult, GenerationResult generationResult)
+    public OperationResult Result
     {
-        ParsedTablesResult = parsedTablesResult;
-        GenerationResult = generationResult;
+        get
+        {
+            OperationResult merged = new OperationResult(OperationResultIdentifiers.Pipeline);
+            merged.Merge(ValidationResult);
+            merged.Merge(GenerationResult);
+            return merged;
+        }
+    }
+
+    public PipelineRunResult(List<TableData> tables, OperationResult validationResult, OperationResult? generationResult = null)
+    {
+        Tables = tables;
+        ValidationResult = validationResult;
+        GenerationResult = generationResult ?? new OperationResult(OperationResultIdentifiers.Generator);
     }
 }

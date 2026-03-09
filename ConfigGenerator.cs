@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using ConfigGenerator.Application;
 using ConfigGenerator.Application.Artifacts;
+using ConfigGenerator.Common;
 using ConfigGenerator.ConfigInfrastructure;
 using ConfigGenerator.ConfigInfrastructure.Data;
 using ConfigGenerator.Parsing;
@@ -11,6 +12,9 @@ namespace ConfigGenerator;
 
 public class ConfigGenerator
 {
+    private const string CodeFileExtension = "cs";
+    private const string JsonFileExtension = "json";
+
     private readonly ITableDataSerializer _tableDataSerializer;
     private readonly ITypeRegistryFactory _typeRegistryFactory;
     private readonly ITableParser _tableParser;
@@ -49,8 +53,9 @@ public class ConfigGenerator
 
     public async Task GenerateCodeAsync(List<ISpreadsheetDataSource> spreadsheetSources, string outputFolderPath)
     {
-        List<TableData> allTables = await ParseTablesAsync(spreadsheetSources);
-        if (!_tableValidator.Validate(allTables).IsValid)
+        List<TableData>? allTables = await GetValidatedTablesAsync(spreadsheetSources);
+
+        if (allTables == null)
         {
             return;
         }
@@ -58,16 +63,16 @@ public class ConfigGenerator
         GenerateCode(allTables, outputFolderPath);
     }
 
-    public GenerationResult GenerateCodeDetailed(List<TableData> tables, string outputFolderPath)
+    public OperationResult GenerateCodeDetailed(List<TableData> tables, string outputFolderPath)
     {
-        GenerationResult result = new GenerationResult();
-        result.AddInfo("code", $"Starting code generation for {tables.Count} tables.");
+        OperationResult result = new OperationResult(OperationResultIdentifiers.Generator);
+        result.AddInfo($"Starting code generation for {tables.Count} tables.", step: OperationSteps.Generation.Code);
 
         string code = CodeGenerator.GenerateConfigClasses(tables, _className, _namespaceName, _typeRegistryFactory);
-        string filePath = System.IO.Path.Combine(outputFolderPath, $"{_className}.cs");
+        string filePath = BuildArtifactPath(outputFolderPath, CodeFileExtension);
         _artifactWriter.WriteText(filePath, code);
 
-        result.AddInfo("code", $"Code generated to {filePath}.", filePath);
+        result.AddInfo($"Code generated to {filePath}.", step: OperationSteps.Generation.Code);
         return result;
     }
 
@@ -78,8 +83,9 @@ public class ConfigGenerator
 
     public async Task GenerateJsonAsync(List<ISpreadsheetDataSource> spreadsheetSources, string outputFolderPath)
     {
-        List<TableData> allTables = await ParseTablesAsync(spreadsheetSources);
-        if (!_tableValidator.Validate(allTables).IsValid)
+        List<TableData>? allTables = await GetValidatedTablesAsync(spreadsheetSources);
+
+        if (allTables == null)
         {
             return;
         }
@@ -87,16 +93,16 @@ public class ConfigGenerator
         GenerateJson(allTables, outputFolderPath);
     }
 
-    public GenerationResult GenerateJsonDetailed(List<TableData> tables, string outputFolderPath)
+    public OperationResult GenerateJsonDetailed(List<TableData> tables, string outputFolderPath)
     {
-        GenerationResult result = new GenerationResult();
-        result.AddInfo("json", $"Starting json generation for {tables.Count} tables.");
+        OperationResult result = new OperationResult(OperationResultIdentifiers.Generator);
+        result.AddInfo($"Starting json generation for {tables.Count} tables.", step: OperationSteps.Generation.Json);
 
         string json = _tableDataSerializer.Serialize(tables);
-        string filePath = System.IO.Path.Combine(outputFolderPath, $"{_className}.json");
+        string filePath = BuildArtifactPath(outputFolderPath, JsonFileExtension);
         _artifactWriter.WriteText(filePath, json);
 
-        result.AddInfo("json", $"Json generated to {filePath}.", filePath);
+        result.AddInfo($"Json generated to {filePath}.", step: OperationSteps.Generation.Json);
         return result;
     }
 
@@ -105,13 +111,13 @@ public class ConfigGenerator
         GenerateJsonDetailed(tables, outputFolderPath);
     }
 
-    public GenerationResult GenerateArtifactsDetailed(List<TableData> tables, string outputFolderPath)
+    public OperationResult GenerateArtifactsDetailed(List<TableData> tables, string outputFolderPath)
     {
-        GenerationResult result = new GenerationResult();
-        result.AddInfo("artifacts", "Starting full artifact generation.");
+        OperationResult result = new OperationResult(OperationResultIdentifiers.Generator);
+        result.AddInfo("Starting full artifact generation.", step: OperationSteps.Generation.Artifacts);
         result.Merge(GenerateCodeDetailed(tables, outputFolderPath));
         result.Merge(GenerateJsonDetailed(tables, outputFolderPath));
-        result.AddInfo("artifacts", "Full artifact generation completed.");
+        result.AddInfo("Full artifact generation completed.", step: OperationSteps.Generation.Artifacts);
         return result;
     }
 
@@ -125,7 +131,24 @@ public class ConfigGenerator
         List<TableData> parsedTables = await ParseTablesAsync(spreadsheetSources);
         allTables.AddRange(parsedTables);
 
-        return _tableValidator.Validate(allTables).IsValid;
+        return _tableValidator.Validate(allTables).IsSuccess;
+    }
+
+    private async Task<List<TableData>?> GetValidatedTablesAsync(List<ISpreadsheetDataSource> spreadsheetSources)
+    {
+        List<TableData> allTables = await ParseTablesAsync(spreadsheetSources);
+
+        if (!_tableValidator.Validate(allTables).IsSuccess)
+        {
+            return null;
+        }
+
+        return allTables;
+    }
+
+    private string BuildArtifactPath(string outputFolderPath, string extension)
+    {
+        return System.IO.Path.Combine(outputFolderPath, $"{_className}.{extension}");
     }
 
     [System.Obsolete("Use GenerateCode")]
