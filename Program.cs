@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 using ConfigGenerator;
 using ConfigGenerator.Application;
 using ConfigGenerator.Application.Artifacts;
@@ -61,10 +62,10 @@ static async Task RunFromSpreadsheetAsync(
 
         case GeneratorRunMode.Validate:
         {
-            ParsedTablesResult parsed = await pipeline.ParseAndValidateDetailedAsync(spreadsheetSources);
-            PrintLines(reporter.BuildParsingLines(parsed.Tables));
-            PrintLines(reporter.BuildValidationLines(parsed));
-            Console.WriteLine(parsed.ValidationResult.IsValid ? "Success" : "Failure");
+            PipelineRunResult validationResult = await pipeline.ParseAndValidateDetailedAsync(spreadsheetSources);
+            PrintLines(reporter.BuildParsingLines(validationResult.Tables));
+            PrintLines(reporter.BuildValidationLines(validationResult));
+            Console.WriteLine(validationResult.ValidationResult.IsValid ? "Success" : "Failure");
             return;
         }
 
@@ -87,7 +88,7 @@ static async Task RunFromSpreadsheetAsync(
             PipelineRunResult runResult = await pipeline.GenerateArtifactsDetailedAsync(spreadsheetSources, options.ResolveGeneratedFolder());
             if (runResult.IsSuccess)
             {
-                MyConfig.Init(runResult.ParsedTablesResult.Tables);
+                MyConfig.Init(runResult.Tables);
             }
 
             PrintGenerationResult(runResult, options, reporter);
@@ -120,14 +121,14 @@ static async Task RunFromJsonAsync(
         return;
     }
 
-    ValidationResult validationResult = pipeline.ValidateTables(tables);
-    ParsedTablesResult parsed = new ParsedTablesResult(tables, validationResult);
+    ValidationResult validation = pipeline.ValidateTables(tables);
+    PipelineRunResult validated = new PipelineRunResult(tables, validation);
 
     if (runMode == GeneratorRunMode.Validate)
     {
-        PrintLines(reporter.BuildParsingLines(parsed.Tables));
-        PrintLines(reporter.BuildValidationLines(parsed));
-        Console.WriteLine(parsed.ValidationResult.IsValid ? "Success" : "Failure");
+        PrintLines(reporter.BuildParsingLines(validated.Tables));
+        PrintLines(reporter.BuildValidationLines(validated));
+        Console.WriteLine(validated.ValidationResult.IsValid ? "Success" : "Failure");
         return;
     }
 

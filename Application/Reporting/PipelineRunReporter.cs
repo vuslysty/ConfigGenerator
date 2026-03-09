@@ -6,7 +6,6 @@ namespace ConfigGenerator.Application.Reporting;
 
 public sealed class PipelineRunReporter
 {
-
     public List<string> BuildParsingLines(List<TableData> tables)
     {
         List<string> lines = new List<string>
@@ -30,16 +29,11 @@ public sealed class PipelineRunReporter
         return lines;
     }
 
-    public List<string> BuildValidationLines(ParsedTablesResult parsed)
-    {
-        return BuildValidationLines(new PipelineRunResult(parsed, new GenerationResult()));
-    }
-
     public List<string> BuildValidationLines(PipelineRunResult runResult)
     {
         List<string> lines = new List<string>();
 
-        foreach (ValidationIssue issue in runResult.ParsedTablesResult.ValidationResult.Issues)
+        foreach (ValidationIssue issue in runResult.ValidationResult.Issues)
         {
             string tablePart = string.IsNullOrWhiteSpace(issue.TableName) ? string.Empty : $" Table={issue.TableName};";
             string rowPart = issue.Row.HasValue ? $" Row={issue.Row.Value};" : string.Empty;
