@@ -10,12 +10,12 @@ public sealed class ValidationResult : OperationResult<ValidationIssue>
 
     public void AddError(string message, string? tableName = null, int? row = null, string? column = null)
     {
-        Add(new ValidationIssue(ValidationSeverity.Error, message, tableName, row, column));
+        Add(new ValidationIssue(MessageSeverity.Error, message, tableName, row, column));
     }
 
     public void AddWarning(string message, string? tableName = null, int? row = null, string? column = null)
     {
-        Add(new ValidationIssue(ValidationSeverity.Warning, message, tableName, row, column));
+        Add(new ValidationIssue(MessageSeverity.Warning, message, tableName, row, column));
     }
 
     public void Merge(ValidationResult another)

@@ -3,23 +3,16 @@ using ConfigGenerator.Common;
 
 namespace ConfigGenerator.Application;
 
-public enum GenerationMessageSeverity
-{
-    Info,
-    Warning,
-    Error
-}
-
 public sealed class GenerationMessage : IOperationMessage
 {
-    public GenerationMessageSeverity Severity { get; }
+    public MessageSeverity Severity { get; }
     public string Step { get; }
     public string Message { get; }
     public string? OutputPath { get; }
 
-    public bool IsError => Severity == GenerationMessageSeverity.Error;
+    public bool IsError => Severity == MessageSeverity.Error;
 
-    public GenerationMessage(GenerationMessageSeverity severity, string step, string message, string? outputPath = null)
+    public GenerationMessage(MessageSeverity severity, string step, string message, string? outputPath = null)
     {
         Severity = severity;
         Step = step;
@@ -34,17 +27,17 @@ public sealed class GenerationResult : OperationResult<GenerationMessage>
 
     public void AddInfo(string step, string message, string? outputPath = null)
     {
-        Add(new GenerationMessage(GenerationMessageSeverity.Info, step, message, outputPath));
+        Add(new GenerationMessage(MessageSeverity.Info, step, message, outputPath));
     }
 
     public void AddWarning(string step, string message, string? outputPath = null)
     {
-        Add(new GenerationMessage(GenerationMessageSeverity.Warning, step, message, outputPath));
+        Add(new GenerationMessage(MessageSeverity.Warning, step, message, outputPath));
     }
 
     public void AddError(string step, string message, string? outputPath = null)
     {
-        Add(new GenerationMessage(GenerationMessageSeverity.Error, step, message, outputPath));
+        Add(new GenerationMessage(MessageSeverity.Error, step, message, outputPath));
     }
 
     public void Merge(GenerationResult another)
