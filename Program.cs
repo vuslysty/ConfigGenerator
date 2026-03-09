@@ -50,51 +50,29 @@ static async Task RunFromSpreadsheetAsync(
     PipelineRunReporter reporter,
     List<ISpreadsheetDataSource> spreadsheetSources)
 {
-    switch (runMode)
+    if (runMode == GeneratorRunMode.Parse)
     {
-        case GeneratorRunMode.Parse:
-        {
-            List<TableData> tables = await pipeline.ParseTablesAsync(spreadsheetSources);
-            PrintLines(reporter.BuildParsingLines(tables));
-            Console.WriteLine("Success");
-            return;
-        }
-
-        case GeneratorRunMode.Validate:
-        {
-            PipelineRunResult validationResult = await pipeline.ParseAndValidateDetailedAsync(spreadsheetSources);
-            PrintLines(reporter.BuildParsingLines(validationResult.Tables));
-            PrintLines(reporter.BuildValidationLines(validationResult));
-            Console.WriteLine(validationResult.ValidationResult.IsValid ? "Success" : "Failure");
-            return;
-        }
-
-        case GeneratorRunMode.GenerateCode:
-        {
-            PipelineRunResult runResult = await pipeline.GenerateCodeDetailedAsync(spreadsheetSources, options.ResolveGeneratedFolder());
-            PrintGenerationResult(runResult, options, reporter);
-            return;
-        }
-
-        case GeneratorRunMode.GenerateJson:
-        {
-            PipelineRunResult runResult = await pipeline.GenerateJsonDetailedAsync(spreadsheetSources, options.ResolveGeneratedFolder());
-            PrintGenerationResult(runResult, options, reporter);
-            return;
-        }
-
-        default:
-        {
-            PipelineRunResult runResult = await pipeline.GenerateArtifactsDetailedAsync(spreadsheetSources, options.ResolveGeneratedFolder());
-            if (runResult.IsSuccess)
-            {
-                MyConfig.Init(runResult.Tables);
-            }
-
-            PrintGenerationResult(runResult, options, reporter);
-            return;
-        }
+        List<TableData> tables = await pipeline.ParseTablesAsync(spreadsheetSources);
+        PrintLines(reporter.BuildParsingLines(tables));
+        Console.WriteLine("Success");
+        return;
     }
+
+    if (runMode == GeneratorRunMode.Validate)
+    {
+        PipelineRunResult validated = await pipeline.ParseAndValidateDetailedAsync(spreadsheetSources);
+        PrintValidationResult(validated, reporter);
+        return;
+    }
+
+    PipelineRunResult runResult = await GenerateByModeFromSpreadsheetAsync(pipeline, runMode, spreadsheetSources, options.ResolveGeneratedFolder());
+
+    if (runMode == GeneratorRunMode.GenerateArtifacts && runResult.IsSuccess)
+    {
+        MyConfig.Init(runResult.Tables);
+    }
+
+    PrintGenerationResult(runResult, options, reporter);
 }
 
 static async Task RunFromJsonAsync(
@@ -126,20 +104,47 @@ static async Task RunFromJsonAsync(
 
     if (runMode == GeneratorRunMode.Validate)
     {
-        PrintLines(reporter.BuildParsingLines(validated.Tables));
-        PrintLines(reporter.BuildValidationLines(validated));
-        Console.WriteLine(validated.ValidationResult.IsValid ? "Success" : "Failure");
+        PrintValidationResult(validated, reporter);
         return;
     }
 
-    PipelineRunResult runResult = runMode switch
-    {
-        GeneratorRunMode.GenerateCode => pipeline.GenerateCodeFromTablesDetailed(tables, options.ResolveGeneratedFolder()),
-        GeneratorRunMode.GenerateJson => pipeline.GenerateJsonFromTablesDetailed(tables, options.ResolveGeneratedFolder()),
-        _ => pipeline.GenerateFromTablesDetailed(tables, options.ResolveGeneratedFolder()),
-    };
-
+    PipelineRunResult runResult = GenerateByModeFromTables(pipeline, runMode, tables, options.ResolveGeneratedFolder());
     PrintGenerationResult(runResult, options, reporter);
+}
+
+static async Task<PipelineRunResult> GenerateByModeFromSpreadsheetAsync(
+    ConfigGenerationPipeline pipeline,
+    GeneratorRunMode runMode,
+    List<ISpreadsheetDataSource> spreadsheetSources,
+    string outputFolderPath)
+{
+    return runMode switch
+    {
+        GeneratorRunMode.GenerateCode => await pipeline.GenerateCodeDetailedAsync(spreadsheetSources, outputFolderPath),
+        GeneratorRunMode.GenerateJson => await pipeline.GenerateJsonDetailedAsync(spreadsheetSources, outputFolderPath),
+        _ => await pipeline.GenerateArtifactsDetailedAsync(spreadsheetSources, outputFolderPath),
+    };
+}
+
+static PipelineRunResult GenerateByModeFromTables(
+    ConfigGenerationPipeline pipeline,
+    GeneratorRunMode runMode,
+    List<TableData> tables,
+    string outputFolderPath)
+{
+    return runMode switch
+    {
+        GeneratorRunMode.GenerateCode => pipeline.GenerateCodeFromTablesDetailed(tables, outputFolderPath),
+        GeneratorRunMode.GenerateJson => pipeline.GenerateJsonFromTablesDetailed(tables, outputFolderPath),
+        _ => pipeline.GenerateFromTablesDetailed(tables, outputFolderPath),
+    };
+}
+
+static void PrintValidationResult(PipelineRunResult runResult, PipelineRunReporter reporter)
+{
+    PrintLines(reporter.BuildParsingLines(runResult.Tables));
+    PrintLines(reporter.BuildValidationLines(runResult));
+    Console.WriteLine(runResult.ValidationResult.IsValid ? "Success" : "Failure");
 }
 
 static void PrintGenerationResult(PipelineRunResult runResult, GeneratorAppOptions options, PipelineRunReporter reporter)

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using ConfigGenerator.ConfigInfrastructure.Data;
@@ -50,27 +51,24 @@ public sealed class ConfigGenerationPipeline
         return result.ValidationResult.IsValid ? result.Tables : new List<TableData>();
     }
 
-    public async Task<PipelineRunResult> GenerateDetailedAsync(List<ISpreadsheetDataSource> spreadsheetSources, string outputFolderPath)
+    public Task<PipelineRunResult> GenerateDetailedAsync(List<ISpreadsheetDataSource> spreadsheetSources, string outputFolderPath)
     {
-        return await GenerateArtifactsDetailedAsync(spreadsheetSources, outputFolderPath);
+        return GenerateArtifactsDetailedAsync(spreadsheetSources, outputFolderPath);
     }
 
-    public async Task<PipelineRunResult> GenerateArtifactsDetailedAsync(List<ISpreadsheetDataSource> spreadsheetSources, string outputFolderPath)
+    public Task<PipelineRunResult> GenerateArtifactsDetailedAsync(List<ISpreadsheetDataSource> spreadsheetSources, string outputFolderPath)
     {
-        PipelineRunResult parsed = await ParseAndValidateDetailedAsync(spreadsheetSources);
-        return GenerateArtifactsFromValidated(parsed, outputFolderPath);
+        return GenerateFromSourcesAsync(spreadsheetSources, outputFolderPath, _configGenerator.GenerateArtifactsDetailed);
     }
 
-    public async Task<PipelineRunResult> GenerateCodeDetailedAsync(List<ISpreadsheetDataSource> spreadsheetSources, string outputFolderPath)
+    public Task<PipelineRunResult> GenerateCodeDetailedAsync(List<ISpreadsheetDataSource> spreadsheetSources, string outputFolderPath)
     {
-        PipelineRunResult parsed = await ParseAndValidateDetailedAsync(spreadsheetSources);
-        return GenerateCodeFromValidated(parsed, outputFolderPath);
+        return GenerateFromSourcesAsync(spreadsheetSources, outputFolderPath, _configGenerator.GenerateCodeDetailed);
     }
 
-    public async Task<PipelineRunResult> GenerateJsonDetailedAsync(List<ISpreadsheetDataSource> spreadsheetSources, string outputFolderPath)
+    public Task<PipelineRunResult> GenerateJsonDetailedAsync(List<ISpreadsheetDataSource> spreadsheetSources, string outputFolderPath)
     {
-        PipelineRunResult parsed = await ParseAndValidateDetailedAsync(spreadsheetSources);
-        return GenerateJsonFromValidated(parsed, outputFolderPath);
+        return GenerateFromSourcesAsync(spreadsheetSources, outputFolderPath, _configGenerator.GenerateJsonDetailed);
     }
 
     public async Task<bool> GenerateAsync(List<ISpreadsheetDataSource> spreadsheetSources, string outputFolderPath)
@@ -81,17 +79,17 @@ public sealed class ConfigGenerationPipeline
 
     public PipelineRunResult GenerateFromTablesDetailed(List<TableData> tables, string outputFolderPath)
     {
-        return GenerateArtifactsFromValidated(ValidateParsedTables(tables), outputFolderPath);
+        return GenerateFromTablesDetailed(tables, outputFolderPath, _configGenerator.GenerateArtifactsDetailed);
     }
 
     public PipelineRunResult GenerateCodeFromTablesDetailed(List<TableData> tables, string outputFolderPath)
     {
-        return GenerateCodeFromValidated(ValidateParsedTables(tables), outputFolderPath);
+        return GenerateFromTablesDetailed(tables, outputFolderPath, _configGenerator.GenerateCodeDetailed);
     }
 
     public PipelineRunResult GenerateJsonFromTablesDetailed(List<TableData> tables, string outputFolderPath)
     {
-        return GenerateJsonFromValidated(ValidateParsedTables(tables), outputFolderPath);
+        return GenerateFromTablesDetailed(tables, outputFolderPath, _configGenerator.GenerateJsonDetailed);
     }
 
     public bool GenerateFromTables(List<TableData> tables, string outputFolderPath)
@@ -100,42 +98,40 @@ public sealed class ConfigGenerationPipeline
         return result.IsSuccess;
     }
 
+    private async Task<PipelineRunResult> GenerateFromSourcesAsync(
+        List<ISpreadsheetDataSource> spreadsheetSources,
+        string outputFolderPath,
+        Func<List<TableData>, string, GenerationResult> generateAction)
+    {
+        PipelineRunResult parsed = await ParseAndValidateDetailedAsync(spreadsheetSources);
+        return GenerateFromValidated(parsed, outputFolderPath, generateAction);
+    }
+
+    private PipelineRunResult GenerateFromTablesDetailed(
+        List<TableData> tables,
+        string outputFolderPath,
+        Func<List<TableData>, string, GenerationResult> generateAction)
+    {
+        return GenerateFromValidated(ValidateParsedTables(tables), outputFolderPath, generateAction);
+    }
+
     private PipelineRunResult ValidateParsedTables(List<TableData> tables)
     {
         ValidationResult validationResult = ValidateTables(tables);
         return new PipelineRunResult(tables, validationResult);
     }
 
-    private PipelineRunResult GenerateArtifactsFromValidated(PipelineRunResult validated, string outputFolderPath)
+    private static PipelineRunResult GenerateFromValidated(
+        PipelineRunResult validated,
+        string outputFolderPath,
+        Func<List<TableData>, string, GenerationResult> generateAction)
     {
         if (!validated.ValidationResult.IsValid)
         {
             return CreateValidationFailedRunResult(validated);
         }
 
-        GenerationResult generation = _configGenerator.GenerateArtifactsDetailed(validated.Tables, outputFolderPath);
-        return new PipelineRunResult(validated.Tables, validated.ValidationResult, generation);
-    }
-
-    private PipelineRunResult GenerateCodeFromValidated(PipelineRunResult validated, string outputFolderPath)
-    {
-        if (!validated.ValidationResult.IsValid)
-        {
-            return CreateValidationFailedRunResult(validated);
-        }
-
-        GenerationResult generation = _configGenerator.GenerateCodeDetailed(validated.Tables, outputFolderPath);
-        return new PipelineRunResult(validated.Tables, validated.ValidationResult, generation);
-    }
-
-    private PipelineRunResult GenerateJsonFromValidated(PipelineRunResult validated, string outputFolderPath)
-    {
-        if (!validated.ValidationResult.IsValid)
-        {
-            return CreateValidationFailedRunResult(validated);
-        }
-
-        GenerationResult generation = _configGenerator.GenerateJsonDetailed(validated.Tables, outputFolderPath);
+        GenerationResult generation = generateAction(validated.Tables, outputFolderPath);
         return new PipelineRunResult(validated.Tables, validated.ValidationResult, generation);
     }
 
